@@ -1,0 +1,6 @@
+aws_region     = "us-east-1"
+github_org     = "panagiod"
+github_repo    = "infra"
+role_name      = "infra-github-actions-plan"
+tf_state_bucket = "your-org-terraform-state"
+tf_lock_table   = "your-org-terraform-locks"

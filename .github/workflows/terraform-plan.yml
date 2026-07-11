@@ -1,0 +1,62 @@
+# Run terraform plan on AWS environment pull requests using OIDC (no static AWS keys).
+name: Terraform plan
+
+on:
+  pull_request:
+    paths:
+      - 'terraform/environments/staging/**'
+      - 'terraform/environments/prod/**'
+      - 'terraform/modules/**'
+      - '.github/workflows/terraform-plan.yml'
+
+permissions:
+  id-token: write
+  contents: read
+  pull-requests: write
+
+jobs:
+  plan:
+    runs-on: ubuntu-latest
+    # Requires repository variables — see docs/github-actions-aws-oidc.md
+    if: vars.AWS_ROLE_ARN != '' && vars.TF_STATE_BUCKET != ''
+    strategy:
+      matrix:
+        environment: [staging, prod]
+    defaults:
+      run:
+        working-directory: terraform/environments/${{ matrix.environment }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION || 'us-east-1' }}
+
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: latest
+
+      # Backend and tfvars are local-only; generate ephemeral CI config from repo variables
+      - name: Prepare Terraform config
+        run: |
+          cat > backend.ci.hcl <<EOF
+          bucket         = "${{ vars.TF_STATE_BUCKET }}"
+          key            = "infra/${{ matrix.environment }}/terraform.tfstate"
+          region         = "${{ vars.AWS_REGION || 'us-east-1' }}"
+          dynamodb_table = "${{ vars.TF_LOCK_TABLE }}"
+          encrypt        = true
+          EOF
+          cp terraform.tfvars.example terraform.tfvars
+
+      - name: Terraform init
+        run: terraform init -input=false -backend-config=backend.ci.hcl
+
+      - name: Terraform plan
+        run: terraform plan -no-color -input=false 2>&1 | tee "${{ github.workspace }}/plan-${{ matrix.environment }}.txt"
+
+      - name: Comment plan on pull request
+        uses: marocchino/sticky-pull-request-comment@v2
+        with:
+          header: terraform-plan-${{ matrix.environment }}
+          path: plan-${{ matrix.environment }}.txt
