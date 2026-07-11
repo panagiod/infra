@@ -1,0 +1,22 @@
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: require-istio-injection-mtls-demo
+spec:
+  validationFailureAction: Enforce
+  background: true
+  rules:
+    - name: check-istio-injection
+      match:
+        any:
+          - resources:
+              kinds:
+                - Namespace
+              names:
+                - mtls-demo
+      validate:
+        message: "Namespace mtls-demo must have istio-injection enabled."
+        pattern:
+          metadata:
+            labels:
+              istio-injection: enabled
