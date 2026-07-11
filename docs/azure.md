@@ -1,16 +1,17 @@
-# Azure (preview skeleton)
+# Azure
 
-Azure support mirrors the AWS layout: **Terraform creates the cluster**, **Argo CD deploys the platform** from the shared `gitops/` tree.
+Azure support mirrors the AWS layout: **Terraform creates the cluster and bootstraps Argo CD**, **Argo CD deploys the platform** from the shared `gitops/` tree.
 
 ## Status
 
 | Component | Status |
 |-----------|--------|
-| VNet + AKS Terraform modules | Skeleton in `terraform/modules/azure/` |
+| VNet + AKS Terraform modules | `terraform/modules/azure/` |
+| Argo CD bootstrap on AKS | Helm + root Application (parity with EKS) |
 | Staging / prod environments | `terraform/environments/azure/` |
-| Terraform CI validate (fmt + validate) | Included in `.github/workflows/terraform.yml` |
-| Argo CD bootstrap on AKS | **Not yet** — use AWS path for plug-and-play today |
-| GitHub Actions OIDC (Azure) | **Not yet** — see AWS [github-actions-aws-oidc.md](github-actions-aws-oidc.md) |
+| Plug-and-play bootstrap | `scripts/bootstrap-azure.sh` |
+| Terraform CI validate | `.github/workflows/terraform.yml` |
+| GitHub Actions OIDC plan | `terraform/bootstrap/azure-github-oidc/` + `terraform-plan-azure.yml` |
 
 ## Layout
 
@@ -18,25 +19,57 @@ Azure support mirrors the AWS layout: **Terraform creates the cluster**, **Argo 
 terraform/
   modules/azure/
     vnet/          # Resource group, VNet, AKS subnet
-    aks/           # AKS cluster with workload identity
+    aks/           # AKS cluster, Argo CD, root Application
   environments/azure/
     staging/
     prod/
+  bootstrap/azure-github-oidc/   # One-time OIDC for CI plan
 ```
 
-The **same** `gitops/platform/` bundle will run on AKS once Argo CD bootstrap is added (Helm install + root Application).
+The **same** `gitops/platform/` bundle runs on AKS after bootstrap — no Azure-specific GitOps tree is required initially.
 
-## Manual bootstrap (skeleton)
+## Quick start (plug and play)
+
+```bash
+export TF_STATE_RG="infra-tfstate-rg"
+export TF_STATE_STORAGE_ACCOUNT="yourorgtfstate"
+export TF_STATE_CONTAINER="tfstate"
+export AZURE_REGION="westeurope"
+export GITOPS_REPO_URL="https://github.com/panagiod/infra"
+export GITOPS_REVISION="main"
+
+# Optional: create storage account + container automatically
+export CREATE_STATE="true"
+
+chmod +x scripts/bootstrap-azure.sh
+./scripts/bootstrap-azure.sh
+
+# Or staging + prod
+ENVIRONMENT=both ./scripts/bootstrap-azure.sh
+
+# Config only — no terraform apply
+SKIP_APPLY=true ./scripts/bootstrap-azure.sh
+```
+
+The script will:
+
+1. Verify `terraform`, `az`, and `kubectl` (`az login`)
+2. Optionally create remote state storage
+3. Generate `backend.hcl` and `terraform.tfvars` from examples
+4. Run two-phase Terraform apply (VNet/AKS first, then Argo CD)
+5. Configure `kubectl` and show node / Argo CD status
+
+## Manual bootstrap
 
 ```bash
 az login
 cp terraform/environments/azure/staging/backend.hcl.example terraform/environments/azure/staging/backend.hcl
 cp terraform/environments/azure/staging/terraform.tfvars.example terraform/environments/azure/staging/terraform.tfvars
-# Edit backend.hcl and terraform.tfvars
+# Edit backend.hcl and terraform.tfvars (include gitops_repo_url)
 
 cd terraform/environments/azure/staging
 terraform init -backend-config=backend.hcl
-terraform plan
+terraform apply -target=module.vnet -target=module.aks
 terraform apply
 ```
 
@@ -45,6 +78,17 @@ Get kubeconfig:
 ```bash
 az aks get-credentials --resource-group infra-staging-rg --name infra-staging-aks
 kubectl get nodes
+kubectl -n argocd get applications
+```
+
+## Verify platform
+
+After Argo CD syncs (same as AWS):
+
+```bash
+kubectl -n cert-manager get pods
+kubectl -n istio-system get pods
+kubectl -n mtls-demo get pods
 ```
 
 ## Remote state
@@ -58,13 +102,27 @@ container_name       = "tfstate"
 key                  = "infra/azure/staging/terraform.tfstate"
 ```
 
-## Next implementation steps
+## GitHub Actions (CI + plan on PRs)
 
-1. Add `azurerm` Helm/Argo CD bootstrap module (parity with `terraform/modules/eks`)
-2. Wire `gitops_repo_url` variables into AKS environments
-3. Add `scripts/bootstrap-azure.sh` plug-and-play script
-4. Add GitHub Actions `azure/login` OIDC for `terraform plan`
+| Workflow | Purpose |
+|----------|---------|
+| `terraform.yml` | `fmt` + `validate` for AWS and Azure |
+| `terraform-plan-azure.yml` | `terraform plan` on Azure PRs using OIDC |
 
-## Why AWS first
+Set up OIDC once: [github-actions-azure-oidc.md](github-actions-azure-oidc.md)
 
-The plug-and-play path (`scripts/bootstrap-aws.sh`, OIDC plan, full platform) is complete on AWS. Azure reuses GitOps; only the Terraform layer differs.
+## AWS vs Azure differences
+
+| Area | AWS | Azure |
+|------|-----|-------|
+| Cluster autoscaler | Helm + IRSA | AKS node pool `auto_scaling_enabled` |
+| Load balancers | AWS Load Balancer Controller | Azure LB for `Service type=LoadBalancer` (Istio gateway) |
+| Block storage | EBS CSI + IRSA | Azure Disk CSI (`storage_profile.disk_driver_enabled`) |
+| Terraform state | S3 + DynamoDB | Storage account + blob lease |
+| CI plan auth | GitHub OIDC → IAM role | GitHub OIDC → managed identity |
+
+## Future hardening
+
+- Separate ingress/LB subnet and NAT gateway for private-cluster topologies
+- Workload Identity for cert-manager Azure DNS-01
+- Azure AD RBAC for cluster admin instead of local accounts

@@ -1,0 +1,8 @@
+subscription_id               = "00000000-0000-0000-0000-000000000000"
+github_org                    = "panagiod"
+github_repo                   = "infra"
+identity_resource_group_name  = "infra-github-oidc-rg"
+location                      = "westeurope"
+identity_name                 = "infra-github-actions-plan"
+tf_state_resource_group_name  = "infra-tfstate-rg"
+tf_state_storage_account_name = "yourorgtfstate"

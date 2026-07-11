@@ -47,3 +47,20 @@ variable "node_max_count" {
   type    = number
   default = 6
 }
+
+variable "gitops_repo_url" {
+  description = "Git repository URL for Argo CD."
+  type        = string
+}
+
+variable "gitops_target_revision" {
+  description = "Git branch, tag, or commit for Argo CD."
+  type        = string
+  default     = "main"
+}
+
+variable "api_server_authorized_ip_ranges" {
+  description = "CIDR blocks allowed to reach the public Kubernetes API."
+  type        = list(string)
+  default     = ["0.0.0.0/0"]
+}

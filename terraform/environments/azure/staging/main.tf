@@ -7,6 +7,14 @@ terraform {
       source  = "hashicorp/azurerm"
       version = ">= 4.0"
     }
+    helm = {
+      source  = "hashicorp/helm"
+      version = ">= 2.12"
+    }
+    kubectl = {
+      source  = "alekc/kubectl"
+      version = ">= 2.0"
+    }
   }
 
   backend "azurerm" {}
@@ -15,6 +23,25 @@ terraform {
 # Authenticates to Azure — use service principal, OIDC in CI, or Azure CLI locally
 provider "azurerm" {
   features {}
+}
+
+# Helm provider uses the AKS API endpoint to install Argo CD after the cluster exists
+provider "helm" {
+  kubernetes = {
+    host                   = module.aks.cluster_endpoint
+    cluster_ca_certificate = base64decode(module.aks.cluster_certificate_authority_data)
+    client_certificate     = base64decode(module.aks.kube_client_certificate)
+    client_key             = base64decode(module.aks.kube_client_key)
+  }
+}
+
+# kubectl provider applies the Argo CD root Application manifest
+provider "kubectl" {
+  host                   = module.aks.cluster_endpoint
+  cluster_ca_certificate = base64decode(module.aks.cluster_certificate_authority_data)
+  client_certificate     = base64decode(module.aks.kube_client_certificate)
+  client_key             = base64decode(module.aks.kube_client_key)
+  load_config_file       = false
 }
 
 module "vnet" {
@@ -29,6 +56,7 @@ module "vnet" {
   }
 }
 
+# AKS cluster plus platform bootstrap (Argo CD root Application)
 module "aks" {
   source = "../../../modules/azure/aks"
 
@@ -43,10 +71,19 @@ module "aks" {
   node_desired_count = var.node_desired_count
   node_min_count     = var.node_min_count
   node_max_count     = var.node_max_count
+
+  gitops_repo_url        = var.gitops_repo_url
+  gitops_target_revision = var.gitops_target_revision
+
+  api_server_authorized_ip_ranges = var.api_server_authorized_ip_ranges
 }
 
 output "cluster_name" {
   value = module.aks.cluster_name
+}
+
+output "cluster_endpoint" {
+  value = module.aks.cluster_endpoint
 }
 
 output "resource_group_name" {
