@@ -1,0 +1,33 @@
+# TLS certificate for the Istio ingress gateway — signed by platform-ca-issuer
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: istio-ingressgateway-certs
+  namespace: istio-system
+spec:
+  secretName: istio-ingressgateway-certs
+  issuerRef:
+    name: platform-ca-issuer
+    kind: ClusterIssuer
+  dnsNames:
+    - gateway.example.com
+---
+# Istio Gateway binding HTTPS to the ingress gateway deployment
+apiVersion: networking.istio.io/v1
+kind: Gateway
+metadata:
+  name: ingress-gateway
+  namespace: istio-system
+spec:
+  selector:
+    istio: ingressgateway
+  servers:
+    - port:
+        number: 443
+        name: https
+        protocol: HTTPS
+      tls:
+        mode: SIMPLE
+        credentialName: istio-ingressgateway-certs
+      hosts:
+        - gateway.example.com
