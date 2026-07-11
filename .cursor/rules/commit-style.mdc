@@ -100,9 +100,13 @@ fix
 
 ## Push and PR workflow
 
-- Push commits incrementally as logical chunks land; do not wait until the end of a large task to push once.
-- PRs may contain many commits; that is fine. Prefer clarity over squash-only history unless the user asks to squash.
-- When amending history on a shared branch, only use `--amend` or force-push if the user explicitly requests it.
+Branching, push-after-every-change, and merge-via-PR rules live in `git-workflow.mdc`. Summary:
+
+- Never push directly to `main`; use `cursor/<name>-3435` branches.
+- Push after every commit; do not hoard local-only work.
+- Open or update a draft PR for each feature branch.
+
+When amending history on a shared branch, only use `--amend` or force-push if the user explicitly requests it.
 
 ## Agent checklist before each commit
 
