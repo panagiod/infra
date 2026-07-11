@@ -118,3 +118,4 @@ chmod +x scripts/bootstrap-azure.sh
 - Tighten `cluster_endpoint_public_access_cidrs` (AWS) or `api_server_authorized_ip_ranges` (Azure) in `terraform.tfvars`
 - Replace bootstrap cert-manager CA with your PKI ([cert-manager-provider.md](cert-manager-provider.md))
 - Promote platform chart changes staging → prod via GitOps
+- No cloud account? Use [local-dev.md](local-dev.md) with kind ($0)

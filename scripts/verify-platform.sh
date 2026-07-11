@@ -19,11 +19,23 @@ require_cmd() {
 check_tools() {
   log "Checking tools"
   require_cmd kubectl
+  if [[ "${LOCAL:-false}" == "true" ]]; then
+    pass "Local mode — skipping AWS CLI check"
+    return 0
+  fi
   require_cmd aws
   aws sts get-caller-identity >/dev/null 2>&1 && pass "AWS CLI authenticated" || fail "AWS CLI not authenticated"
 }
 
 resolve_cluster() {
+  if [[ "${LOCAL:-false}" == "true" ]]; then
+    local ctx="kind-${CLUSTER_NAME:-infra-local}"
+    kubectl config use-context "${ctx}" >/dev/null 2>&1 || die "kind context ${ctx} not found — run bootstrap-local.sh first"
+    CLUSTER_NAME="${CLUSTER_NAME:-infra-local}"
+    pass "Using kind context ${ctx}"
+    return 0
+  fi
+
   local cluster_name="${CLUSTER_NAME:-}"
   if [[ -z "${cluster_name}" ]]; then
     cluster_name="infra-${ENVIRONMENT}"
