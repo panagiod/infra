@@ -7,7 +7,7 @@ alwaysApply: true
 
 Work on git the way a human teammate would: short-lived feature branches, frequent commits, push often, merge through pull requests. **Never push directly to `main`.**
 
-See also: `commit-style.mdc` for message format and commit sizing; `dependencies.mdc` for third-party version policy.
+See also: `commit-style.mdc` for message format and commit sizing; `dependencies.mdc` for third-party version policy; `inline-comments.mdc` for commenting generated code.
 
 ## Author identity (commits are yours, not the agent's)
 
