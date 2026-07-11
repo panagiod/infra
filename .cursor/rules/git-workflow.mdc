@@ -9,6 +9,27 @@ Work on git the way a human teammate would: short-lived feature branches, freque
 
 See also: `commit-style.mdc` for message format and commit sizing.
 
+## Author identity (commits are yours, not the agent's)
+
+All commits must be authored and committed **as the repository owner**, never as `Cursor Agent` or any bot identity.
+
+Before the first commit in a session, set local repo git config from the owning user (e.g. Cursor `run-info` → `owningUserName`, `owningUserEmail`):
+
+```bash
+git config user.name "Panagiotis Dimitriou"
+git config user.email "dimitrioupanagiotis@outlook.com"
+```
+
+Verify before committing:
+
+```bash
+git var GIT_AUTHOR_IDENT
+```
+
+- **Do not** use `cursoragent@cursor.com` or `Cursor Agent` as author or committer.
+- If name/email is unknown, ask the user once and reuse for the repo session.
+- Write commit messages as **the user would write them** — direct, technical, no “the agent added…” framing.
+
 ## Branching
 
 - **Do not** commit or push directly to `main`, `master`, or other protected default branches.
@@ -47,7 +68,11 @@ git push -u origin cursor/<descriptive-name>-3435
 
 - **Open or update a PR** for each feature branch targeting `main`.
 - Default to **draft PRs** unless the user asks otherwise.
-- Use the PR to describe what changed and why; link related issues if any.
+- **Write PR titles and bodies as the user**, not as Cursor or an AI assistant:
+  - No “Agent added…”, “AI-generated”, or “Cursor cloud agent” wording.
+  - Use the same tone as commit messages: what changed, why, how to test.
+  - Do not refer to yourself in third person; write as the developer opening the PR.
+- Link related issues when relevant.
 - **Do not merge** your own PR unless the user explicitly asks you to.
 - **Do not** force-push rewritten history unless the user explicitly requests it.
 
