@@ -1,0 +1,59 @@
+# Ephemeral kind cluster smoke test — validates GitOps bootstrap without cloud cost.
+name: Kind smoke
+
+on:
+  pull_request:
+    paths:
+      - 'gitops/**'
+      - 'hack/kind/**'
+      - 'scripts/bootstrap-local.sh'
+      - 'scripts/verify-platform.sh'
+      - '.github/workflows/kind-smoke.yml'
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: helm/kind-action@v1
+        with:
+          cluster_name: infra-local
+          config: hack/kind/cluster.yaml
+
+      - uses: azure/setup-kubectl@v4
+
+      - uses: azure/setup-helm@v4
+
+      - name: Install MetalLB
+        run: |
+          kubectl apply -f https://raw.githubusercontent.com/metallb/metallb/v0.14.9/config/manifests/metallb-native.yaml
+          kubectl -n metallb-system rollout status deploy/controller --timeout=180s
+          kubectl apply -f hack/kind/metallb.yaml
+
+      - name: Bootstrap Argo CD and cluster-root
+        env:
+          GITOPS_REPO_URL: https://github.com/${{ github.repository }}
+          GITOPS_REVISION: ${{ github.head_ref || github.ref_name }}
+          INSTALL_METALLB: "false"
+          WAIT_TIMEOUT: "1200"
+        run: |
+          chmod +x scripts/bootstrap-local.sh
+          # Cluster already created by kind-action — skip create, install platform shell
+          RECREATE_CLUSTER=false INSTALL_METALLB=false \
+            ./scripts/bootstrap-local.sh
+
+      - name: Verify core platform health
+        env:
+          LOCAL: "true"
+          CLUSTER_NAME: infra-local
+        run: |
+          chmod +x scripts/verify-platform.sh
+          ./scripts/verify-platform.sh || {
+            echo "--- Argo CD applications ---"
+            kubectl -n argocd get applications -o wide || true
+            echo "--- cert-manager pods ---"
+            kubectl -n cert-manager get pods || true
+            exit 1
+          }

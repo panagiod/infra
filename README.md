@@ -8,7 +8,7 @@ Production-ready, multi-cloud Kubernetes platform. **Phase 1** delivers AWS EKS 
 |------|---------|
 | [`terraform/`](terraform/) | AWS EKS + Azure AKS for staging and prod |
 | [`gitops/`](gitops/) | Argo CD app-of-apps, platform components, workloads |
-| [`docs/`](docs/) | Architecture, [QUICKSTART](docs/QUICKSTART.md), [Azure](docs/azure.md), bootstrap |
+| [`docs/`](docs/) | Architecture, [QUICKSTART](docs/QUICKSTART.md), [local dev](docs/local-dev.md), [Azure](docs/azure.md) |
 | [`.github/workflows/`](.github/workflows/) | Terraform and manifest validation CI |
 
 ## Architecture (phase 1)
@@ -31,6 +31,13 @@ See [docs/architecture.md](docs/architecture.md) for details.
 - Helm `>= 3.12` (for optional manual bootstrap steps)
 
 ## Quick start (plug and play)
+
+**Local (free)** — see [docs/local-dev.md](docs/local-dev.md):
+
+```bash
+chmod +x scripts/bootstrap-local.sh
+./scripts/bootstrap-local.sh
+```
 
 **AWS** — see [docs/QUICKSTART.md](docs/QUICKSTART.md):
 
