@@ -17,6 +17,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # Fetch the latest kustomize release tag and install it (no hardcoded version)
       - name: Install latest kustomize
         run: |
           KUSTOMIZE_VERSION=$(curl -fsSL https://api.github.com/repos/kubernetes-sigs/kustomize/releases/latest \
@@ -25,6 +26,7 @@ jobs:
           sudo install kustomize /usr/local/bin/kustomize
           kustomize version
 
+      # Render manifests to catch YAML/Kustomize errors before merge
       - name: Build staging cluster apps
         run: kustomize build gitops/clusters/staging
 
