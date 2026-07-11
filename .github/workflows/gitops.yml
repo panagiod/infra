@@ -1,0 +1,41 @@
+name: GitOps manifests
+
+on:
+  pull_request:
+    paths:
+      - 'gitops/**'
+      - '.github/workflows/gitops.yml'
+  push:
+    branches:
+      - main
+    paths:
+      - 'gitops/**'
+
+jobs:
+  kustomize-build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install kustomize
+        run: |
+          curl -sSL "https://raw.githubusercontent.com/kubernetes-sigs/kustomize/master/hack/install_kustomize.sh" | bash
+          sudo mv kustomize /usr/local/bin/
+
+      - name: Build staging cluster apps
+        run: kustomize build gitops/clusters/staging
+
+      - name: Build prod cluster apps
+        run: kustomize build gitops/clusters/prod
+
+      - name: Build cert-manager staging overlay
+        run: kustomize build gitops/platform/cert-manager/overlays/staging
+
+      - name: Build cert-manager prod overlay
+        run: kustomize build gitops/platform/cert-manager/overlays/prod
+
+      - name: Build mtls-demo staging overlay
+        run: kustomize build gitops/apps/mtls-demo/overlays/staging
+
+      - name: Build mtls-demo prod overlay
+        run: kustomize build gitops/apps/mtls-demo/overlays/prod
