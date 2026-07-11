@@ -10,3 +10,6 @@ node_vm_size       = "Standard_D4s_v3"
 node_desired_count = 3
 node_min_count     = 3
 node_max_count     = 6
+
+gitops_repo_url        = "https://github.com/panagiod/infra"
+gitops_target_revision = "main"
