@@ -134,13 +134,20 @@ kubectl -n monitoring get secret kube-prometheus-stack-grafana \
 kubectl -n monitoring port-forward svc/kube-prometheus-stack-grafana 3000:80
 ```
 
-## 9. Ingress / Gateway (optional)
+## 9. Ingress / Gateway
 
-Set `gateway_hostname` in terraform.tfvars and configure Route53 (or external DNS) to point to the Istio ingress LoadBalancer:
+Set the gateway hostname in `gitops/clusters/<env>/cluster.env` and the matching overlay under `gitops/platform/istio/ingress-tls/overlays/<env>/`. Point DNS at the LoadBalancer:
 
 ```bash
 kubectl -n istio-system get svc istio-ingressgateway
+kubectl -n istio-system get certificate istio-ingressgateway-certs
 ```
+
+HTTPS uses the platform CA (browsers will not trust it until you use a public CA or install the CA bundle). For public trust, see [cert-manager-provider.md](cert-manager-provider.md).
+
+## 10. Alerting
+
+See [alerting.md](alerting.md) for Prometheus rules and Alertmanager receiver setup.
 
 ## Troubleshooting
 

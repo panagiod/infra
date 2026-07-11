@@ -75,8 +75,10 @@ check_platform_apps() {
     istiod
     istio-csr
     istio-gateway
+    istio-ingress-tls
     istio-policies
     monitoring
+    monitoring-alerts
     mtls-demo
   )
   for app in "${apps[@]}"; do
@@ -125,6 +127,21 @@ check_mtls_demo() {
   fi
 }
 
+check_ingress_tls() {
+  log "Checking ingress TLS"
+  if kubectl -n istio-system get certificate istio-ingressgateway-certs >/dev/null 2>&1; then
+    local ready
+    ready="$(kubectl -n istio-system get certificate istio-ingressgateway-certs -o jsonpath='{.status.conditions[?(@.type=="Ready")].status}' 2>/dev/null || true)"
+    if [[ "${ready}" == "True" ]]; then
+      pass "istio-ingressgateway-certs Certificate is Ready"
+    else
+      warn "istio-ingressgateway-certs not Ready yet"
+    fi
+  else
+    warn "istio-ingressgateway-certs Certificate not found"
+  fi
+}
+
 check_mtls_policy() {
   log "Checking STRICT mTLS policy"
   local mode
@@ -153,6 +170,7 @@ main() {
   check_argocd
   check_platform_apps
   check_workloads
+  check_ingress_tls
   check_mtls_policy
   check_mtls_demo
   summary

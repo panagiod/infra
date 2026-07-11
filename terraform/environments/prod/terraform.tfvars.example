@@ -12,4 +12,4 @@ node_min_size = 3
 node_max_size = 6
 
 # Restrict in real deployments, e.g. ["203.0.113.0/24"]
-cluster_endpoint_public_access_cidrs = ["0.0.0.0/0"]
+cluster_endpoint_public_access_cidrs = ["203.0.113.0/24"]

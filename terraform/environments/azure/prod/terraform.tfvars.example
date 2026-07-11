@@ -13,3 +13,6 @@ node_max_count     = 6
 
 gitops_repo_url        = "https://github.com/panagiod/infra"
 gitops_target_revision = "main"
+
+# Tighten before production — never use 0.0.0.0/0
+api_server_authorized_ip_ranges = ["203.0.113.0/24"]
