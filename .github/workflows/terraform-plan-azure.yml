@@ -1,0 +1,61 @@
+# Run terraform plan on Azure environment pull requests using OIDC (no static Azure secrets).
+name: Terraform plan (Azure)
+
+on:
+  pull_request:
+    paths:
+      - 'terraform/environments/azure/**'
+      - 'terraform/modules/azure/**'
+      - '.github/workflows/terraform-plan-azure.yml'
+
+permissions:
+  id-token: write
+  contents: read
+  pull-requests: write
+
+jobs:
+  plan:
+    runs-on: ubuntu-latest
+    # Requires repository variables — see docs/github-actions-azure-oidc.md
+    if: vars.AZURE_CLIENT_ID != '' && vars.TF_STATE_STORAGE_ACCOUNT != ''
+    strategy:
+      matrix:
+        environment: [staging, prod]
+    defaults:
+      run:
+        working-directory: terraform/environments/azure/${{ matrix.environment }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: azure/login@v2
+        with:
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: latest
+
+      # Backend and tfvars are local-only; generate ephemeral CI config from repo variables
+      - name: Prepare Terraform config
+        run: |
+          cat > backend.ci.hcl <<EOF
+          resource_group_name  = "${{ vars.TF_STATE_RG }}"
+          storage_account_name = "${{ vars.TF_STATE_STORAGE_ACCOUNT }}"
+          container_name       = "${{ vars.TF_STATE_CONTAINER || 'tfstate' }}"
+          key                  = "infra/azure/${{ matrix.environment }}/terraform.tfstate"
+          EOF
+          cp terraform.tfvars.example terraform.tfvars
+
+      - name: Terraform init
+        run: terraform init -input=false -backend-config=backend.ci.hcl
+
+      - name: Terraform plan
+        run: terraform plan -no-color -input=false 2>&1 | tee "${{ github.workspace }}/plan-azure-${{ matrix.environment }}.txt"
+
+      - name: Comment plan on pull request
+        uses: marocchino/sticky-pull-request-comment@v2
+        with:
+          header: terraform-plan-azure-${{ matrix.environment }}
+          path: plan-azure-${{ matrix.environment }}.txt
