@@ -1,5 +1,7 @@
+# Kustomize entry point for the production cluster bootstrap.
+# Points at the production Application set so prod and staging stay in separate folders.
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 
 resources:
-  - applications.yaml
+  - applications.yaml  # All Argo CD Application CRs for production platform + apps

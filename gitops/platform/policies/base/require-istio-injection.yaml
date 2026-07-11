@@ -1,22 +1,26 @@
+# Kyverno ClusterPolicy — require Istio sidecar injection on mtls-demo namespace
+# Without the istio-injection=enabled label, pods would not get Envoy sidecars and
+# mTLS policies would not apply. This policy blocks namespaces that forget the label.
+
 apiVersion: kyverno.io/v1
 kind: ClusterPolicy
 metadata:
   name: require-istio-injection-mtls-demo
 spec:
-  validationFailureAction: Enforce
-  background: true
+  validationFailureAction: Enforce  # Reject non-compliant resources (not just audit/warn)
+  background: true  # Also scan existing resources on a schedule, not only at admission
   rules:
     - name: check-istio-injection
       match:
         any:
           - resources:
               kinds:
-                - Namespace
+                - Namespace  # Policy applies when someone creates/updates a Namespace
               names:
-                - mtls-demo
+                - mtls-demo  # Only this demo namespace is required to have injection
       validate:
         message: "Namespace mtls-demo must have istio-injection enabled."
         pattern:
           metadata:
             labels:
-              istio-injection: enabled
+              istio-injection: enabled  # Istio watches this label to inject sidecars

@@ -1,5 +1,6 @@
+# Bundles Istio security policies for the Argo CD istio-policies Application.
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 
 resources:
-  - mtls-strict.yaml
+  - mtls-strict.yaml  # PeerAuthentication resources enforcing STRICT mTLS

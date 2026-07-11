@@ -1,3 +1,16 @@
+# =============================================================================
+# PRODUCTION CLUSTER — Argo CD Application definitions
+# =============================================================================
+# Same platform stack as staging, tuned for production: longer metric retention,
+# prod overlays for CA and demo app, and no staging-only tracing defaults.
+# Sync waves ensure cert-manager → CA → Istio → policies → apps install safely.
+# =============================================================================
+
+# -----------------------------------------------------------------------------
+# cert-manager — TLS certificate automation
+# -----------------------------------------------------------------------------
+# Foundation for all in-cluster TLS. Issues and renews certificates used by
+# Istio CSR and any Application that requests certs via cert-manager CRs.
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
@@ -31,6 +44,11 @@ spec:
       - CreateNamespace=true
       - ServerSideApply=true
 ---
+# -----------------------------------------------------------------------------
+# platform-ca — Internal certificate authority for the mesh
+# -----------------------------------------------------------------------------
+# Production overlay for the platform CA. Signs certs that Istio and workloads
+# trust cluster-wide. Requires cert-manager to be healthy first.
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
@@ -45,7 +63,7 @@ spec:
   source:
     repoURL: https://github.com/panagiod/infra
     targetRevision: main
-    path: gitops/platform/cert-manager/overlays/prod
+    path: gitops/platform/cert-manager/overlays/prod  # Production CA overlay
   destination:
     server: https://kubernetes.default.svc
     namespace: cert-manager
@@ -59,6 +77,10 @@ spec:
     - name: cert-manager
       namespace: argocd
 ---
+# -----------------------------------------------------------------------------
+# istio-base — Istio CRDs and cluster-wide foundations
+# -----------------------------------------------------------------------------
+# Installs Istio custom resources and base configuration before the control plane.
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
@@ -87,6 +109,11 @@ spec:
     syncOptions:
       - CreateNamespace=true
 ---
+# -----------------------------------------------------------------------------
+# istiod — Istio control plane (mesh brain)
+# -----------------------------------------------------------------------------
+# Runs the Istio discovery and configuration service. Production omits staging
+# Zipkin defaults to keep mesh config minimal; add tracing via meshConfig if needed.
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
@@ -121,6 +148,11 @@ spec:
     - name: istio-base
       namespace: argocd
 ---
+# -----------------------------------------------------------------------------
+# istio-csr — cert-manager integration for Istio TLS
+# -----------------------------------------------------------------------------
+# Issues istiod's serving certificate from platform-ca-issuer for a unified
+# trust chain across the production mesh.
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
@@ -164,6 +196,10 @@ spec:
     - name: istiod
       namespace: argocd
 ---
+# -----------------------------------------------------------------------------
+# istio-gateway — Ingress gateway (north-south traffic)
+# -----------------------------------------------------------------------------
+# Entry point for external traffic into the service mesh via a cloud LoadBalancer.
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
@@ -197,6 +233,11 @@ spec:
     - name: istiod
       namespace: argocd
 ---
+# -----------------------------------------------------------------------------
+# istio-policies — Mesh-wide security defaults (mTLS STRICT)
+# -----------------------------------------------------------------------------
+# Enforces mutual TLS for the production mesh by syncing PeerAuthentication
+# policies from Git into istio-system and workload namespaces.
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
@@ -223,6 +264,11 @@ spec:
     - name: istiod
       namespace: argocd
 ---
+# -----------------------------------------------------------------------------
+# monitoring — Prometheus, Grafana, and Alertmanager
+# -----------------------------------------------------------------------------
+# Production observability with 30-day Prometheus retention and Grafana dashboards.
+# Rotate adminPassword and wire Alertmanager receivers for on-call workflows.
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
@@ -242,10 +288,10 @@ spec:
       values: |
         grafana:
           enabled: true
-          adminPassword: changeme
+          adminPassword: changeme  # Must be changed for production Grafana access
         prometheus:
           prometheusSpec:
-            retention: 30d
+            retention: 30d  # Longer history than staging for incident investigation
             serviceMonitorSelectorNilUsesHelmValues: false
             podMonitorSelectorNilUsesHelmValues: false
         alertmanager:
@@ -261,6 +307,10 @@ spec:
       - CreateNamespace=true
       - ServerSideApply=true
 ---
+# -----------------------------------------------------------------------------
+# kyverno — Policy engine for cluster guardrails
+# -----------------------------------------------------------------------------
+# Admission controller that enforces organizational policies on create/update.
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
@@ -288,6 +338,11 @@ spec:
       - CreateNamespace=true
       - ServerSideApply=true
 ---
+# -----------------------------------------------------------------------------
+# platform-policies — Kyverno policies from Git (cluster standards)
+# -----------------------------------------------------------------------------
+# Cluster-wide validation rules (e.g. Istio injection on mtls-demo) applied
+# after the Kyverno controller is running.
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
@@ -313,6 +368,11 @@ spec:
     - name: kyverno
       namespace: argocd
 ---
+# -----------------------------------------------------------------------------
+# mtls-demo — Sample app to verify mTLS in production
+# -----------------------------------------------------------------------------
+# Production overlay scales frontend and backend to 2 replicas each. Validates
+# that mesh security policies work under slightly higher load than staging.
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:

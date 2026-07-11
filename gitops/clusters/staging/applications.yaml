@@ -1,36 +1,59 @@
+# =============================================================================
+# STAGING CLUSTER — Argo CD Application definitions
+# =============================================================================
+# This file tells Argo CD what to deploy on the staging cluster and in what
+# order. Each "Application" is one deployable unit (a Helm chart or a folder
+# of YAML from this Git repo). Sync waves (0, 1, 2, …) control install order
+# so dependencies (e.g. cert-manager before the CA) are ready first.
+# =============================================================================
+
+# -----------------------------------------------------------------------------
+# cert-manager — TLS certificate automation
+# -----------------------------------------------------------------------------
+# Installs cert-manager, which issues and renews TLS certificates inside the
+# cluster. Everything that needs HTTPS (Istio, apps) depends on this running
+# first. Wave 0 = earliest platform component.
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
   name: cert-manager
-  namespace: argocd
+  namespace: argocd  # Argo CD stores Application CRs in the argocd namespace
   annotations:
+    # Sync wave 0: deploy before all other apps in this file
     argocd.argoproj.io/sync-wave: "0"
   finalizers:
+    # Ensures child resources are cleaned up if this Application is deleted
     - resources-finalizer.argocd.argoproj.io
 spec:
-  project: default
+  project: default  # Argo CD project (RBAC / allowed repos); default is permissive
   source:
-    repoURL: https://charts.jetstack.io
+    repoURL: https://charts.jetstack.io  # Official cert-manager Helm chart repo
     chart: cert-manager
     helm:
-      releaseName: cert-manager
+      releaseName: cert-manager  # Name of the Helm release in the cluster
       values: |
-        installCRDs: true
+        installCRDs: true  # Install Custom Resource Definitions cert-manager needs
         prometheus:
-          enabled: true
+          enabled: true  # Expose metrics for monitoring
           servicemonitor:
-            enabled: true
+            enabled: true  # Let Prometheus scrape cert-manager automatically
   destination:
-    server: https://kubernetes.default.svc
+    server: https://kubernetes.default.svc  # Deploy to the local cluster Argo runs on
     namespace: cert-manager
   syncPolicy:
     automated:
-      prune: true
-      selfHeal: true
+      prune: true    # Remove cluster objects removed from Git/Helm values
+      selfHeal: true # Re-apply if someone changes resources by hand
     syncOptions:
-      - CreateNamespace=true
-      - ServerSideApply=true
+      - CreateNamespace=true   # Create cert-manager namespace if missing
+      - ServerSideApply=true # Safer apply for large CRDs and controllers
 ---
+# -----------------------------------------------------------------------------
+# platform-ca — Internal certificate authority for the mesh
+# -----------------------------------------------------------------------------
+# Deploys our own CA (Certificate Authority) using cert-manager manifests from
+# this repo. Istio and other services trust certs signed by this CA. Must run
+# after cert-manager (wave 1) because it uses cert-manager CRs.
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
@@ -44,11 +67,11 @@ spec:
   project: default
   source:
     repoURL: https://github.com/panagiod/infra
-    targetRevision: main
-    path: gitops/platform/cert-manager/overlays/staging
+    targetRevision: main  # Git branch or tag to sync from
+    path: gitops/platform/cert-manager/overlays/staging  # Staging-specific CA overlay
   destination:
     server: https://kubernetes.default.svc
-    namespace: cert-manager
+    namespace: cert-manager  # CA secrets and issuers live next to cert-manager
   syncPolicy:
     automated:
       prune: true
@@ -56,9 +79,15 @@ spec:
     syncOptions:
       - CreateNamespace=true
   dependsOn:
+    # Wait until cert-manager Application is healthy before syncing this one
     - name: cert-manager
       namespace: argocd
 ---
+# -----------------------------------------------------------------------------
+# istio-base — Istio CRDs and cluster-wide foundations
+# -----------------------------------------------------------------------------
+# Installs Istio "base" chart: CRDs and shared config. Does not run the control
+# plane yet; that is istiod (wave 3). Service mesh features need this layer first.
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
@@ -76,10 +105,10 @@ spec:
     helm:
       releaseName: istio-base
       values: |
-        defaultRevision: default
+        defaultRevision: default  # Label Istio resources with revision "default"
   destination:
     server: https://kubernetes.default.svc
-    namespace: istio-system
+    namespace: istio-system  # Standard namespace for Istio control plane components
   syncPolicy:
     automated:
       prune: true
@@ -87,6 +116,11 @@ spec:
     syncOptions:
       - CreateNamespace=true
 ---
+# -----------------------------------------------------------------------------
+# istiod — Istio control plane (mesh brain)
+# -----------------------------------------------------------------------------
+# Runs istiod: discovery, config distribution, and certificates for sidecars.
+# Staging enables Zipkin tracing in mesh defaults for easier debugging.
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
@@ -107,10 +141,11 @@ spec:
         global:
           istioNamespace: istio-system
         meshConfig:
-          enablePrometheusMerge: true
+          enablePrometheusMerge: true  # Merge app and Envoy metrics for Prometheus
           defaultConfig:
             tracing:
               zipkin:
+                # Send trace spans to Zipkin in istio-system (staging observability)
                 address: zipkin.istio-system:9411
   destination:
     server: https://kubernetes.default.svc
@@ -125,6 +160,11 @@ spec:
     - name: istio-base
       namespace: argocd
 ---
+# -----------------------------------------------------------------------------
+# istio-csr — cert-manager integration for Istio TLS
+# -----------------------------------------------------------------------------
+# Uses cert-manager to issue TLS certs for istiod instead of Istio's built-in CA.
+# Connects to platform-ca-issuer so the whole mesh shares one trust root.
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
@@ -138,7 +178,7 @@ spec:
   project: default
   source:
     repoURL: https://charts.jetstack.io
-    chart: cert-manager-istio-csr
+    chart: cert-manager-istio-csr  # CSR = Certificate Signing Request bridge for Istio
     helm:
       releaseName: istio-csr
       values: |
@@ -146,13 +186,13 @@ spec:
           issuer:
             group: cert-manager.io
             kind: ClusterIssuer
-            name: platform-ca-issuer
+            name: platform-ca-issuer  # Our cluster-wide CA from platform-ca app
         certificate:
           dnsNames:
-            - istiod.istio-system.svc
+            - istiod.istio-system.svc  # SAN on the cert istiod presents
           mountNames:
-            istiodCert: istiod
-            rootCert: root-cert
+            istiodCert: istiod   # Secret name for istiod's serving cert
+            rootCert: root-cert  # Secret name for the mesh root CA bundle
   destination:
     server: https://kubernetes.default.svc
     namespace: cert-manager
@@ -168,6 +208,11 @@ spec:
     - name: istiod
       namespace: argocd
 ---
+# -----------------------------------------------------------------------------
+# istio-gateway — Ingress gateway (north-south traffic)
+# -----------------------------------------------------------------------------
+# Deploys the Istio ingress gateway so external clients can reach services in
+# the mesh. LoadBalancer type requests a cloud LB with a public or internal IP.
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
@@ -187,7 +232,7 @@ spec:
       values: |
         name: istio-ingressgateway
         service:
-          type: LoadBalancer
+          type: LoadBalancer  # Expose gateway outside the cluster (cloud LB)
   destination:
     server: https://kubernetes.default.svc
     namespace: istio-system
@@ -201,6 +246,11 @@ spec:
     - name: istiod
       namespace: argocd
 ---
+# -----------------------------------------------------------------------------
+# istio-policies — Mesh-wide security defaults (mTLS STRICT)
+# -----------------------------------------------------------------------------
+# Applies PeerAuthentication policies from Git so all mesh traffic uses mutual
+# TLS. Demo and production workloads inherit these defaults once sidecars exist.
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
@@ -227,6 +277,11 @@ spec:
     - name: istiod
       namespace: argocd
 ---
+# -----------------------------------------------------------------------------
+# monitoring — Prometheus, Grafana, and Alertmanager
+# -----------------------------------------------------------------------------
+# Full observability stack for metrics and dashboards. Staging keeps 15 days of
+# Prometheus data; change adminPassword before any real use.
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
@@ -246,14 +301,15 @@ spec:
       values: |
         grafana:
           enabled: true
-          adminPassword: changeme
+          adminPassword: changeme  # Replace in production; staging placeholder only
         prometheus:
           prometheusSpec:
-            retention: 15d
+            retention: 15d  # How long staging keeps time-series metrics
+            # Discover ServiceMonitors/PodMonitors cluster-wide, not only Helm-owned ones
             serviceMonitorSelectorNilUsesHelmValues: false
             podMonitorSelectorNilUsesHelmValues: false
         alertmanager:
-          enabled: true
+          enabled: true  # Route firing alerts (PagerDuty, Slack, etc. when configured)
   destination:
     server: https://kubernetes.default.svc
     namespace: monitoring
@@ -265,6 +321,11 @@ spec:
       - CreateNamespace=true
       - ServerSideApply=true
 ---
+# -----------------------------------------------------------------------------
+# kyverno — Policy engine for cluster guardrails
+# -----------------------------------------------------------------------------
+# Installs Kyverno to validate and mutate Kubernetes resources (e.g. require
+# labels, block unsafe pods). platform-policies deploys rules that use Kyverno.
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
@@ -292,13 +353,18 @@ spec:
       - CreateNamespace=true
       - ServerSideApply=true
 ---
+# -----------------------------------------------------------------------------
+# platform-policies — Kyverno policies from Git (cluster standards)
+# -----------------------------------------------------------------------------
+# Deploys ClusterPolicy manifests (e.g. require Istio injection on demo ns).
+# Runs after Kyverno is installed so the admission webhook can enforce rules.
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
   name: platform-policies
   namespace: argocd
   annotations:
-    argocd.argoproj.io/sync-wave: "8"
+    argocd.argoproj.io/sync-wave: "8"  # Same wave as kyverno; dependsOn orders them
   finalizers:
     - resources-finalizer.argocd.argoproj.io
 spec:
@@ -309,6 +375,7 @@ spec:
     path: gitops/platform/policies/base
   destination:
     server: https://kubernetes.default.svc
+    # No namespace: ClusterPolicy resources are cluster-scoped
   syncPolicy:
     automated:
       prune: true
@@ -317,13 +384,18 @@ spec:
     - name: kyverno
       namespace: argocd
 ---
+# -----------------------------------------------------------------------------
+# mtls-demo — Sample app to verify mTLS and mesh policies
+# -----------------------------------------------------------------------------
+# Deploys frontend + backend in mtls-demo namespace (staging overlay). Used to
+# prove STRICT mTLS and authorization work before rolling patterns to real apps.
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
   name: mtls-demo
   namespace: argocd
   annotations:
-    argocd.argoproj.io/sync-wave: "9"
+    argocd.argoproj.io/sync-wave: "9"  # Last: needs mesh policies and injection rules
   finalizers:
     - resources-finalizer.argocd.argoproj.io
 spec:

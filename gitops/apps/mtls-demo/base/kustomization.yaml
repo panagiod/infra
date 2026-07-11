@@ -1,5 +1,7 @@
+# Base Kustomization for the mTLS demo app.
+# Overlays (staging/prod) include this and add environment labels and replica counts.
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 
 resources:
-  - app.yaml
+  - app.yaml  # Namespace, Deployments, Services, and AuthorizationPolicy

@@ -1,12 +1,19 @@
+# Istio PeerAuthentication policies — enforce mutual TLS (mTLS)
+# PeerAuthentication tells Envoy sidecars how to authenticate inbound connections.
+# STRICT mode rejects plain-text or one-way TLS; both sides must present valid certs.
+
+# Default for istio-system — control plane namespace uses STRICT mesh-wide default
 apiVersion: security.istio.io/v1beta1
 kind: PeerAuthentication
 metadata:
-  name: default
+  name: default  # "default" applies to all workloads in this namespace unless overridden
   namespace: istio-system
 spec:
   mtls:
-    mode: STRICT
+    mode: STRICT  # Require encrypted, mutually authenticated connections only
 ---
+# Default for mtls-demo — demo app namespace also enforces STRICT mTLS
+# Ensures frontend→backend traffic is encrypted and identity-verified by Istio.
 apiVersion: security.istio.io/v1beta1
 kind: PeerAuthentication
 metadata:
