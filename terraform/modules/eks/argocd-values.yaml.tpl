@@ -1,11 +1,15 @@
+# Helm values for the Argo CD chart installed by Terraform
 global:
+  # In-cluster DNS name for the Argo CD API server service
   domain: argocd-server.argocd.svc.cluster.local
 
 configs:
   params:
+    # Run server without TLS inside the cluster; terminate TLS at ingress if needed
     server.insecure: true
   cm:
     application.instanceLabelKey: argocd.argoproj.io/instance
+    # Custom health check for nested Application resources (app-of-apps pattern)
     resource.customizations: |
       argoproj.io/Application:
         health.lua: |
