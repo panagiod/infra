@@ -2,7 +2,7 @@
 
 Get staging (and optionally prod) running on **AWS EKS** with minimal manual steps. Platform components deploy automatically via Argo CD after the cluster exists.
 
-For full detail see [bootstrap.md](bootstrap.md). For Azure (preview skeleton) see [azure.md](azure.md).
+For full detail see [bootstrap.md](bootstrap.md). For Azure see [azure.md](azure.md).
 
 ## Prerequisites
 
@@ -90,13 +90,25 @@ kubectl -n mtls-demo exec deploy/frontend -- wget -qO- http://backend:8080/
 | Workflow | Purpose |
 |----------|---------|
 | `terraform.yml` | `fmt` + `validate` on every PR |
-| `terraform-plan.yml` | `terraform plan` on PRs using AWS OIDC (read-only) |
+| `terraform-plan.yml` | AWS `terraform plan` on PRs using OIDC |
+| `terraform-plan-azure.yml` | Azure `terraform plan` on PRs using OIDC |
 
-Set up OIDC once: [github-actions-aws-oidc.md](github-actions-aws-oidc.md)
+Set up OIDC once: [github-actions-aws-oidc.md](github-actions-aws-oidc.md) (AWS), [github-actions-azure-oidc.md](github-actions-azure-oidc.md) (Azure)
+
+## Azure quick start
+
+Same plug-and-play flow on **AKS** — see [azure.md](azure.md) for full detail:
+
+```bash
+export TF_STATE_RG="infra-tfstate-rg"
+export TF_STATE_STORAGE_ACCOUNT="yourorgtfstate"
+export AZURE_REGION="westeurope"
+chmod +x scripts/bootstrap-azure.sh
+./scripts/bootstrap-azure.sh
+```
 
 ## Next steps
 
-- Tighten `cluster_endpoint_public_access_cidrs` in `terraform.tfvars`
+- Tighten `cluster_endpoint_public_access_cidrs` (AWS) or `api_server_authorized_ip_ranges` (Azure) in `terraform.tfvars`
 - Replace bootstrap cert-manager CA with your PKI ([cert-manager-provider.md](cert-manager-provider.md))
 - Promote platform chart changes staging → prod via GitOps
-- Azure: use skeleton under `terraform/environments/azure/` when ready ([azure.md](azure.md))
