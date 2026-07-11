@@ -6,9 +6,9 @@ Production-ready, multi-cloud Kubernetes platform. **Phase 1** delivers AWS EKS 
 
 | Path | Purpose |
 |------|---------|
-| [`terraform/`](terraform/) | AWS VPC + EKS for staging and prod |
+| [`terraform/`](terraform/) | AWS EKS + Azure AKS (preview) for staging and prod |
 | [`gitops/`](gitops/) | Argo CD app-of-apps, platform components, workloads |
-| [`docs/`](docs/) | Architecture, bootstrap, upgrades, cert-manager provider |
+| [`docs/`](docs/) | Architecture, [QUICKSTART](docs/QUICKSTART.md), bootstrap, Azure preview |
 | [`.github/workflows/`](.github/workflows/) | Terraform and manifest validation CI |
 
 ## Architecture (phase 1)
@@ -30,7 +30,18 @@ See [docs/architecture.md](docs/architecture.md) for details.
 - An S3 bucket and DynamoDB table for Terraform remote state (see [docs/bootstrap.md](docs/bootstrap.md))
 - Helm `>= 3.12` (for optional manual bootstrap steps)
 
-## Quick start
+## Quick start (plug and play)
+
+See **[docs/QUICKSTART.md](docs/QUICKSTART.md)** for the one-command AWS bootstrap:
+
+```bash
+export TF_STATE_BUCKET="your-org-terraform-state"
+export TF_LOCK_TABLE="your-org-terraform-locks"
+chmod +x scripts/bootstrap-aws.sh
+./scripts/bootstrap-aws.sh
+```
+
+## Manual quick start
 
 ### 1. Bootstrap remote state
 
