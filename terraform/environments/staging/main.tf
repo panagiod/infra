@@ -1,3 +1,4 @@
+# Staging environment root module — wires VPC + EKS for pre-production testing
 terraform {
   required_version = ">= 1.5.0"
 
@@ -16,12 +17,15 @@ terraform {
     }
   }
 
+  # Remote state stored in S3 — bucket configured in backend.hcl at init time
   backend "s3" {}
 }
 
+# AWS region for all resources in this environment
 provider "aws" {
   region = var.aws_region
 
+  # Tags automatically applied to every AWS resource this stack creates
   default_tags {
     tags = {
       Project     = "infra-platform"
@@ -31,14 +35,17 @@ provider "aws" {
   }
 }
 
+# Discover healthy AZs in the account/region for subnet placement
 data "aws_availability_zones" "available" {
   state = "available"
 }
 
+# Short-lived auth token so Helm/kubectl providers can talk to the new cluster
 data "aws_eks_cluster_auth" "this" {
   name = module.eks.cluster_name
 }
 
+# Helm provider uses the EKS API endpoint to install charts after the cluster exists
 provider "helm" {
   kubernetes = {
     host                   = module.eks.cluster_endpoint
@@ -47,6 +54,7 @@ provider "helm" {
   }
 }
 
+# kubectl provider applies the Argo CD root Application manifest
 provider "kubectl" {
   host                   = module.eks.cluster_endpoint
   cluster_ca_certificate = base64decode(module.eks.cluster_certificate_authority_data)
@@ -54,6 +62,7 @@ provider "kubectl" {
   load_config_file       = false
 }
 
+# Shared VPC module — staging uses a single NAT gateway to save cost
 module "vpc" {
   source = "../../modules/vpc"
 
@@ -65,6 +74,7 @@ module "vpc" {
   single_nat_gateway = var.single_nat_gateway
 }
 
+# EKS cluster plus platform bootstrap (Argo CD, autoscaler, ALB controller)
 module "eks" {
   source = "../../modules/eks"
 

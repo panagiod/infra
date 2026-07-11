@@ -13,6 +13,7 @@ variable "kubernetes_version" {
   default = "1.29"
 }
 
+# Prod uses a different VPC CIDR than staging for isolation
 variable "vpc_cidr" {
   type    = string
   default = "10.20.0.0/16"
@@ -28,11 +29,13 @@ variable "public_subnets" {
   default = ["10.20.101.0/24", "10.20.102.0/24", "10.20.103.0/24"]
 }
 
+# false = one NAT gateway per AZ for high availability
 variable "single_nat_gateway" {
   type    = bool
   default = false
 }
 
+# Larger instances than staging for production workloads
 variable "node_instance_types" {
   type    = list(string)
   default = ["m6i.large"]

@@ -1,3 +1,4 @@
+# Prod environment root module — same layout as staging with HA-oriented defaults
 terraform {
   required_version = ">= 1.5.0"
 
@@ -62,7 +63,7 @@ module "vpc" {
   azs                = slice(data.aws_availability_zones.available.names, 0, 3)
   private_subnets    = var.private_subnets
   public_subnets     = var.public_subnets
-  single_nat_gateway = var.single_nat_gateway
+  single_nat_gateway = var.single_nat_gateway # false in prod = NAT per AZ for HA
 }
 
 module "eks" {
