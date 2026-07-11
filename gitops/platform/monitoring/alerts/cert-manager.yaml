@@ -1,0 +1,32 @@
+# Prometheus alerting rules for cert-manager certificate expiry
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: cert-manager
+  namespace: monitoring
+  labels:
+    # Required so kube-prometheus-stack discovers this rule
+    release: kube-prometheus-stack
+spec:
+  groups:
+    - name: cert-manager
+      rules:
+        - alert: CertificateExpiringSoon
+          expr: |
+            certmanager_certificate_expiration_timestamp_seconds - time() < 7 * 24 * 3600
+          for: 1h
+          labels:
+            severity: warning
+          annotations:
+            summary: Certificate expiring within 7 days
+            description: Certificate {{ $labels.name }} in {{ $labels.namespace }} expires soon.
+
+        - alert: CertificateExpiringCritical
+          expr: |
+            certmanager_certificate_expiration_timestamp_seconds - time() < 24 * 3600
+          for: 15m
+          labels:
+            severity: critical
+          annotations:
+            summary: Certificate expiring within 24 hours
+            description: Certificate {{ $labels.name }} in {{ $labels.namespace }} expires within 24h.

@@ -54,6 +54,8 @@ kind: Application
 metadata:
   name: platform-ca
   namespace: argocd
+  labels:
+    infra.platform/git-source: "true"
   annotations:
     argocd.argoproj.io/sync-wave: "1"
   finalizers:
@@ -234,6 +236,41 @@ spec:
       namespace: argocd
 ---
 # -----------------------------------------------------------------------------
+# istio-ingress-tls — Gateway TLS certificate and HTTPS listener
+# -----------------------------------------------------------------------------
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: istio-ingress-tls
+  namespace: argocd
+  labels:
+    infra.platform/git-source: "true"
+  annotations:
+    argocd.argoproj.io/sync-wave: "5"
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/panagiod/infra
+    targetRevision: main
+    path: gitops/platform/istio/ingress-tls/overlays/prod
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: istio-system
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+  dependsOn:
+    - name: platform-ca
+      namespace: argocd
+    - name: istio-gateway
+      namespace: argocd
+---
+# -----------------------------------------------------------------------------
 # istio-policies — Mesh-wide security defaults (mTLS STRICT)
 # -----------------------------------------------------------------------------
 # Enforces mutual TLS for the production mesh by syncing PeerAuthentication
@@ -243,6 +280,8 @@ kind: Application
 metadata:
   name: istio-policies
   namespace: argocd
+  labels:
+    infra.platform/git-source: "true"
   annotations:
     argocd.argoproj.io/sync-wave: "6"
   finalizers:
@@ -288,7 +327,10 @@ spec:
       values: |
         grafana:
           enabled: true
-          adminPassword: changeme  # Must be changed for production Grafana access
+          admin:
+            existingSecret: grafana-admin-credentials
+            userKey: admin-user
+            passwordKey: admin-password
         prometheus:
           prometheusSpec:
             retention: 30d  # Longer history than staging for incident investigation
@@ -296,6 +338,34 @@ spec:
             podMonitorSelectorNilUsesHelmValues: false
         alertmanager:
           enabled: true
+          config:
+            global:
+              resolve_timeout: 5m
+            route:
+              receiver: default
+              group_by: ['alertname', 'namespace']
+              routes:
+                - matchers:
+                    - severity = critical
+                  receiver: critical
+                - matchers:
+                    - severity = warning
+                  receiver: warning
+            receivers:
+              - name: default
+              - name: critical
+                slack_configs:
+                  - channel: '#platform-critical'
+                    send_resolved: true
+                    title: '{{ .CommonAnnotations.summary }}'
+                    text: '{{ .CommonLabels.alertname }}: {{ .CommonAnnotations.description }}'
+                    api_url: 'REPLACE_WITH_SLACK_WEBHOOK'
+              - name: warning
+                slack_configs:
+                  - channel: '#platform-warning'
+                    send_resolved: true
+                    title: '{{ .CommonAnnotations.summary }}'
+                    api_url: 'REPLACE_WITH_SLACK_WEBHOOK'
   destination:
     server: https://kubernetes.default.svc
     namespace: monitoring
@@ -306,6 +376,39 @@ spec:
     syncOptions:
       - CreateNamespace=true
       - ServerSideApply=true
+---
+# -----------------------------------------------------------------------------
+# monitoring-alerts — Prometheus alerting rules
+# -----------------------------------------------------------------------------
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: monitoring-alerts
+  namespace: argocd
+  labels:
+    infra.platform/git-source: "true"
+  annotations:
+    argocd.argoproj.io/sync-wave: "7"
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/panagiod/infra
+    targetRevision: main
+    path: gitops/platform/monitoring/alerts
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: monitoring
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+  dependsOn:
+    - name: monitoring
+      namespace: argocd
 ---
 # -----------------------------------------------------------------------------
 # kyverno — Policy engine for cluster guardrails
@@ -348,6 +451,8 @@ kind: Application
 metadata:
   name: platform-policies
   namespace: argocd
+  labels:
+    infra.platform/git-source: "true"
   annotations:
     argocd.argoproj.io/sync-wave: "8"
   finalizers:
@@ -378,6 +483,8 @@ kind: Application
 metadata:
   name: mtls-demo
   namespace: argocd
+  labels:
+    infra.platform/git-source: "true"
   annotations:
     argocd.argoproj.io/sync-wave: "9"
   finalizers:

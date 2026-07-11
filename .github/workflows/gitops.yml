@@ -44,3 +44,12 @@ jobs:
 
       - name: Build mtls-demo prod overlay
         run: kustomize build gitops/apps/mtls-demo/overlays/prod
+
+      - name: Build istio ingress TLS staging overlay
+        run: kustomize build gitops/platform/istio/ingress-tls/overlays/staging
+
+      - name: Build istio ingress TLS prod overlay
+        run: kustomize build gitops/platform/istio/ingress-tls/overlays/prod
+
+      - name: Build monitoring alerts
+        run: kustomize build gitops/platform/monitoring/alerts

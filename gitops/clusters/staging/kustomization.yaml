@@ -1,8 +1,36 @@
-# Kustomize entry point for the staging cluster bootstrap.
-# Argo CD (or `kubectl apply -k`) uses this file to find which manifests to deploy.
+# Kustomize entry point for the prod cluster bootstrap.
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 
-# List every YAML file (or subdirectory) that makes up this cluster's GitOps bundle.
 resources:
-  - applications.yaml  # All Argo CD Application CRs for staging platform + apps
+  - applications.yaml
+
+configMapGenerator:
+  - name: cluster-config
+    envs:
+      - cluster.env
+    options:
+      disableNameSuffixHash: true
+
+replacements:
+  - source:
+      kind: ConfigMap
+      name: cluster-config
+      fieldPath: data.GITOPS_REPO_URL
+    targets:
+      - select:
+          kind: Application
+          labelSelector: infra.platform/git-source=true
+        fieldPaths:
+          - spec.source.repoURL
+
+  - source:
+      kind: ConfigMap
+      name: cluster-config
+      fieldPath: data.GITOPS_TARGET_REVISION
+    targets:
+      - select:
+          kind: Application
+          labelSelector: infra.platform/git-source=true
+        fieldPaths:
+          - spec.source.targetRevision

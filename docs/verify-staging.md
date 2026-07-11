@@ -33,6 +33,7 @@ CLUSTER_NAME="my-staging-cluster" ./scripts/verify-platform.sh
 | Platform apps | cert-manager, Istio, monitoring, mtls-demo Applications present |
 | Workloads | Key pods Running in cert-manager, istio-system, mtls-demo |
 | mTLS | `PeerAuthentication` default mode `STRICT` |
+| Ingress TLS | `istio-ingressgateway-certs` Certificate Ready |
 | Demo | `frontend` can reach `backend` over the mesh |
 
 Warnings (not hard failures) are emitted when apps are still syncing — wait a few minutes and re-run.
