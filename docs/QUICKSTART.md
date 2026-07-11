@@ -51,6 +51,12 @@ The script will:
 4. Run two-phase Terraform apply (VPC/EKS first, then Helm addons + Argo CD)
 5. Configure `kubectl` and show node / Argo CD status
 
+After bootstrap, run the verification script: [verify-staging.md](verify-staging.md).
+
+```bash
+./scripts/verify-platform.sh
+```
+
 ## Manual path (same result)
 
 ```bash
