@@ -8,11 +8,11 @@ terraform {
     }
     helm = {
       source  = "hashicorp/helm"
-      version = "~> 2.12"
+      version = ">= 2.12"
     }
     kubectl = {
       source  = "alekc/kubectl"
-      version = "~> 2.4"
+      version = ">= 2.0"
     }
   }
 }
@@ -89,7 +89,7 @@ locals {
     ManagedBy   = "terraform"
   })
 
-  cluster_addons = {
+  addons = {
     coredns = {
       most_recent = true
     }
@@ -101,7 +101,7 @@ locals {
     }
     aws-ebs-csi-driver = {
       most_recent              = true
-      service_account_role_arn = module.ebs_csi_irsa.iam_role_arn
+      service_account_role_arn = module.ebs_csi_irsa.arn
     }
   }
 }
@@ -110,22 +110,22 @@ data "aws_caller_identity" "current" {}
 
 module "eks" {
   source  = "terraform-aws-modules/eks/aws"
-  version = "~> 20.8"
+  version = ">= 20.0"
 
-  cluster_name    = var.cluster_name
-  cluster_version = var.kubernetes_version
+  name               = var.cluster_name
+  kubernetes_version = var.kubernetes_version
 
   vpc_id                   = var.vpc_id
   subnet_ids               = var.private_subnet_ids
   control_plane_subnet_ids = var.private_subnet_ids
 
-  cluster_endpoint_public_access       = var.cluster_endpoint_public_access
-  cluster_endpoint_public_access_cidrs = var.cluster_endpoint_public_access_cidrs
-  cluster_endpoint_private_access      = true
+  endpoint_public_access       = var.cluster_endpoint_public_access
+  endpoint_public_access_cidrs = var.cluster_endpoint_public_access_cidrs
+  endpoint_private_access      = true
 
   enable_cluster_creator_admin_permissions = true
 
-  cluster_addons = local.cluster_addons
+  addons = local.addons
 
   eks_managed_node_groups = {
     default = {
@@ -146,10 +146,12 @@ module "eks" {
 }
 
 module "ebs_csi_irsa" {
-  source  = "terraform-aws-modules/iam/aws//modules/iam-role-for-service-accounts-eks"
-  version = "~> 5.39"
+  source  = "terraform-aws-modules/iam/aws//modules/iam-role-for-service-accounts"
+  version = ">= 5.0"
 
-  role_name_prefix = "${var.cluster_name}-ebs-csi-"
+  name = "${var.cluster_name}-ebs-csi"
+
+  attach_ebs_csi_policy = true
 
   oidc_providers = {
     main = {
@@ -158,18 +160,14 @@ module "ebs_csi_irsa" {
     }
   }
 
-  role_policy_arns = {
-    policy = "arn:aws:iam::aws:policy/service-role/AmazonEBSCSIDriverPolicy"
-  }
-
   tags = local.tags
 }
 
 module "cluster_autoscaler_irsa" {
-  source  = "terraform-aws-modules/iam/aws//modules/iam-role-for-service-accounts-eks"
-  version = "~> 5.39"
+  source  = "terraform-aws-modules/iam/aws//modules/iam-role-for-service-accounts"
+  version = ">= 5.0"
 
-  role_name_prefix = "${var.cluster_name}-cluster-autoscaler-"
+  name = "${var.cluster_name}-cluster-autoscaler"
 
   attach_cluster_autoscaler_policy = true
   cluster_autoscaler_cluster_names = [module.eks.cluster_name]
@@ -185,10 +183,10 @@ module "cluster_autoscaler_irsa" {
 }
 
 module "aws_load_balancer_controller_irsa" {
-  source  = "terraform-aws-modules/iam/aws//modules/iam-role-for-service-accounts-eks"
-  version = "~> 5.39"
+  source  = "terraform-aws-modules/iam/aws//modules/iam-role-for-service-accounts"
+  version = ">= 5.0"
 
-  role_name_prefix = "${var.cluster_name}-aws-lb-ctrl-"
+  name = "${var.cluster_name}-aws-lb-ctrl"
 
   attach_load_balancer_controller_policy = true
 
@@ -207,37 +205,33 @@ resource "helm_release" "aws_load_balancer_controller" {
   repository = "https://aws.github.io/eks-charts"
   chart      = "aws-load-balancer-controller"
   namespace  = "kube-system"
-  version    = "1.7.2"
 
-  set {
-    name  = "clusterName"
-    value = module.eks.cluster_name
-  }
-
-  set {
-    name  = "serviceAccount.create"
-    value = "true"
-  }
-
-  set {
-    name  = "serviceAccount.name"
-    value = "aws-load-balancer-controller"
-  }
-
-  set {
-    name  = "serviceAccount.annotations.eks\\.amazonaws\\.com/role-arn"
-    value = module.aws_load_balancer_controller_irsa.iam_role_arn
-  }
-
-  set {
-    name  = "region"
-    value = data.aws_region.current.name
-  }
-
-  set {
-    name  = "vpcId"
-    value = var.vpc_id
-  }
+  set = [
+    {
+      name  = "clusterName"
+      value = module.eks.cluster_name
+    },
+    {
+      name  = "serviceAccount.create"
+      value = "true"
+    },
+    {
+      name  = "serviceAccount.name"
+      value = "aws-load-balancer-controller"
+    },
+    {
+      name  = "serviceAccount.annotations.eks\\.amazonaws\\.com/role-arn"
+      value = module.aws_load_balancer_controller_irsa.arn
+    },
+    {
+      name  = "region"
+      value = data.aws_region.current.id
+    },
+    {
+      name  = "vpcId"
+      value = var.vpc_id
+    },
+  ]
 
   depends_on = [module.eks]
 }
@@ -249,27 +243,25 @@ resource "helm_release" "cluster_autoscaler" {
   repository = "https://kubernetes.github.io/autoscaler"
   chart      = "cluster-autoscaler"
   namespace  = "kube-system"
-  version    = "9.37.0"
 
-  set {
-    name  = "autoDiscovery.clusterName"
-    value = module.eks.cluster_name
-  }
-
-  set {
-    name  = "awsRegion"
-    value = data.aws_region.current.name
-  }
-
-  set {
-    name  = "rbac.serviceAccount.annotations.eks\\.amazonaws\\.com/role-arn"
-    value = module.cluster_autoscaler_irsa.iam_role_arn
-  }
-
-  set {
-    name  = "rbac.serviceAccount.name"
-    value = "cluster-autoscaler"
-  }
+  set = [
+    {
+      name  = "autoDiscovery.clusterName"
+      value = module.eks.cluster_name
+    },
+    {
+      name  = "awsRegion"
+      value = data.aws_region.current.id
+    },
+    {
+      name  = "rbac.serviceAccount.annotations.eks\\.amazonaws\\.com/role-arn"
+      value = module.cluster_autoscaler_irsa.arn
+    },
+    {
+      name  = "rbac.serviceAccount.name"
+      value = "cluster-autoscaler"
+    },
+  ]
 
   depends_on = [module.eks]
 }
@@ -279,7 +271,6 @@ resource "helm_release" "argocd" {
   repository = "https://argoproj.github.io/argo-helm"
   chart      = "argo-cd"
   namespace  = "argocd"
-  version    = "6.7.18"
 
   create_namespace = true
 
@@ -319,9 +310,9 @@ output "oidc_provider_arn" {
 }
 
 output "cluster_autoscaler_role_arn" {
-  value = module.cluster_autoscaler_irsa.iam_role_arn
+  value = module.cluster_autoscaler_irsa.arn
 }
 
 output "aws_load_balancer_controller_role_arn" {
-  value = module.aws_load_balancer_controller_irsa.iam_role_arn
+  value = module.aws_load_balancer_controller_irsa.arn
 }
