@@ -17,10 +17,13 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install kustomize
+      - name: Install latest kustomize
         run: |
-          curl -sSL "https://raw.githubusercontent.com/kubernetes-sigs/kustomize/master/hack/install_kustomize.sh" | bash -s -- 5.4.2
-          sudo mv kustomize /usr/local/bin/
+          KUSTOMIZE_VERSION=$(curl -fsSL https://api.github.com/repos/kubernetes-sigs/kustomize/releases/latest \
+            | grep '"tag_name"' | head -1 | sed -E 's/.*"kustomize\/v?(.*)".*/\1/')
+          curl -sSL "https://raw.githubusercontent.com/kubernetes-sigs/kustomize/master/hack/install_kustomize.sh" | bash -s -- "${KUSTOMIZE_VERSION}"
+          sudo install kustomize /usr/local/bin/kustomize
+          kustomize version
 
       - name: Build staging cluster apps
         run: kustomize build gitops/clusters/staging
