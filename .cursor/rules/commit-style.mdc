@@ -104,7 +104,7 @@ fix
 
 Branching, push-after-every-change, and merge-via-PR rules live in `git-workflow.mdc`. Summary:
 
-- Never push directly to `main`; use `cursor/<name>-3435` branches.
+- Never push directly to `main`; use `feat/`, `fix/`, `chore/`, or `docs/` branches (see `git-workflow.mdc`).
 - Push after every commit; do not hoard local-only work.
 - Open or update a draft PR for each feature branch.
 
