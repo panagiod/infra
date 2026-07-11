@@ -20,7 +20,19 @@ sequenceDiagram
 
 ## One-time setup
 
-### 1. Apply the OIDC bootstrap stack
+### Option A: automated script (recommended)
+
+```bash
+export TF_STATE_BUCKET="your-org-terraform-state"
+export TF_LOCK_TABLE="your-org-terraform-locks"
+export AWS_REGION="us-east-1"
+chmod +x scripts/setup-github-oidc-aws.sh
+./scripts/setup-github-oidc-aws.sh
+```
+
+The script applies the bootstrap stack and sets GitHub repository variables.
+
+### Option B: manual apply
 
 ```bash
 cd terraform/bootstrap/aws-github-oidc
@@ -41,7 +53,7 @@ Copy the output `github_actions_role_arn` into a GitHub repository **Variable**:
 
 Repository → **Settings** → **Secrets and variables** → **Actions** → **Variables**.
 
-### 2. Confirm workflow permissions
+### Confirm workflow permissions
 
 The workflow `.github/workflows/terraform-plan.yml` requires:
 
@@ -56,7 +68,7 @@ Change any file under `terraform/environments/staging` or `prod`. The **Terrafor
 ## Security notes
 
 - The IAM role trusts only your GitHub org/repo (and optionally branch patterns).
-- Attached policy is **read-only** for planning plus minimal S3/DynamoDB for state access.
+- Plan permissions are **scoped read** for EKS/VPC/IAM describe APIs plus S3/DynamoDB state access — not account-wide `ReadOnlyAccess`.
 - **`terraform apply` is not run from Actions** — apply stays manual or via a separate protected workflow.
 
 ## Troubleshooting

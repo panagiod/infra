@@ -83,10 +83,35 @@ resource "aws_iam_role" "github_actions_plan" {
   })
 }
 
-# Read-only AWS access so terraform plan can refresh state without mutating resources
-resource "aws_iam_role_policy_attachment" "readonly" {
-  role       = aws_iam_role.github_actions_plan.name
-  policy_arn = "arn:aws:iam::aws:policy/ReadOnlyAccess"
+# Scoped read-only access for terraform plan (replaces account-wide ReadOnlyAccess)
+resource "aws_iam_role_policy" "terraform_plan" {
+  name = "${var.role_name}-terraform-plan"
+  role = aws_iam_role.github_actions_plan.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Sid    = "TerraformPlanRead"
+        Effect = "Allow"
+        Action = [
+          "ec2:Describe*",
+          "eks:Describe*",
+          "eks:List*",
+          "iam:Get*",
+          "iam:List*",
+          "elasticloadbalancing:Describe*",
+          "autoscaling:Describe*",
+          "logs:Describe*",
+          "logs:List*",
+          "kms:Describe*",
+          "kms:List*",
+          "sts:GetCallerIdentity",
+        ]
+        Resource = "*"
+      },
+    ]
+  })
 }
 
 # Allow reading and locking remote state during plan
