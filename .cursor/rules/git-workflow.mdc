@@ -1,0 +1,78 @@
+---
+description: Git workflow — branch, commit and push on every change, merge via PR
+alwaysApply: true
+---
+
+# Git workflow
+
+Work on git the way a human teammate would: short-lived feature branches, frequent commits, push often, merge through pull requests. **Never push directly to `main`.**
+
+See also: `commit-style.mdc` for message format and commit sizing.
+
+## Branching
+
+- **Do not** commit or push directly to `main`, `master`, or other protected default branches.
+- **Always** create a feature branch before making changes:
+  ```
+  git checkout main
+  git pull origin main
+  git checkout -b cursor/<descriptive-name>-3435
+  ```
+- Branch names must use the `cursor/` prefix and `-3435` suffix (e.g. `cursor/add-external-secrets-3435`).
+- One branch per task or coherent feature. Do not pile unrelated work on the same branch.
+- If `main` is behind the work you need (e.g. open PR not merged yet), branch from the relevant feature branch and note the base in the PR.
+
+## Commit and push on every change
+
+After each logical unit of work (per `commit-style.mdc`):
+
+1. **Stage** only files for that unit.
+2. **Commit** with a human-readable message.
+3. **Push** to the remote feature branch immediately.
+
+```bash
+git add <files>
+git commit -m "feat(gitops): add external secrets operator"
+git push -u origin cursor/<descriptive-name>-3435
+```
+
+### Rules
+
+- **Do not** accumulate local-only commits across a session without pushing.
+- **Do not** wait until the entire task is finished to push once.
+- **Do** push after every commit (or after every small batch of commits in quick succession).
+- If push fails on network errors, retry with exponential backoff (4s, 8s, 16s, 32s).
+
+## Pull requests and merge
+
+- **Open or update a PR** for each feature branch targeting `main`.
+- Default to **draft PRs** unless the user asks otherwise.
+- Use the PR to describe what changed and why; link related issues if any.
+- **Do not merge** your own PR unless the user explicitly asks you to.
+- **Do not** force-push rewritten history unless the user explicitly requests it.
+
+Typical flow:
+
+```mermaid
+flowchart LR
+  main --> branch["feature branch"]
+  branch --> commit["commit + push"]
+  commit --> pr["open / update PR"]
+  pr --> review["review / CI"]
+  review --> merge["merge to main"]
+```
+
+## Session checklist
+
+Before ending work on a task:
+
+1. All changes committed (no stray dirty files unless intentional WIP).
+2. All commits pushed to the remote feature branch.
+3. PR created or updated for the branch.
+4. No direct commits on `main`.
+
+## Exceptions
+
+- **User explicitly says** “commit to main” or “push to main” — follow the user.
+- **Initial repo bootstrap** on an empty repo: still prefer a branch + PR when a remote and default branch exist.
+- **Docs-only typo** on a branch already open: same branch, new commit, push, update PR.
