@@ -1,0 +1,5 @@
+bucket         = "your-org-terraform-state"
+key            = "infra/staging/terraform.tfstate"
+region         = "us-east-1"
+dynamodb_table = "your-org-terraform-locks"
+encrypt        = true
