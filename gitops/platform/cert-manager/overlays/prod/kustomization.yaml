@@ -1,0 +1,9 @@
+# Production overlay — same CA chain as base, labeled for production.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+  - ../../base  # Identical CA bootstrap; prod/staging differ by labels and cluster only
+
+commonLabels:
+  environment: prod

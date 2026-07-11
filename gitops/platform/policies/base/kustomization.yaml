@@ -1,0 +1,6 @@
+# Base Kustomization for platform Kyverno policies deployed by platform-policies app.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+  - require-istio-injection.yaml  # Ensures mtls-demo namespace keeps Istio injection on

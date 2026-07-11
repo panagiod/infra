@@ -1,0 +1,46 @@
+name: GitOps manifests
+
+on:
+  pull_request:
+    paths:
+      - 'gitops/**'
+      - '.github/workflows/gitops.yml'
+  push:
+    branches:
+      - main
+    paths:
+      - 'gitops/**'
+
+jobs:
+  kustomize-build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # Fetch the latest kustomize release tag and install it (no hardcoded version)
+      - name: Install latest kustomize
+        run: |
+          KUSTOMIZE_VERSION=$(curl -fsSL https://api.github.com/repos/kubernetes-sigs/kustomize/releases/latest \
+            | grep '"tag_name"' | head -1 | sed -E 's/.*"kustomize\/v?(.*)".*/\1/')
+          curl -sSL "https://raw.githubusercontent.com/kubernetes-sigs/kustomize/master/hack/install_kustomize.sh" | bash -s -- "${KUSTOMIZE_VERSION}"
+          sudo install kustomize /usr/local/bin/kustomize
+          kustomize version
+
+      # Render manifests to catch YAML/Kustomize errors before merge
+      - name: Build staging cluster apps
+        run: kustomize build gitops/clusters/staging
+
+      - name: Build prod cluster apps
+        run: kustomize build gitops/clusters/prod
+
+      - name: Build cert-manager staging overlay
+        run: kustomize build gitops/platform/cert-manager/overlays/staging
+
+      - name: Build cert-manager prod overlay
+        run: kustomize build gitops/platform/cert-manager/overlays/prod
+
+      - name: Build mtls-demo staging overlay
+        run: kustomize build gitops/apps/mtls-demo/overlays/staging
+
+      - name: Build mtls-demo prod overlay
+        run: kustomize build gitops/apps/mtls-demo/overlays/prod

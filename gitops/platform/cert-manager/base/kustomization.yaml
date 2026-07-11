@@ -1,0 +1,7 @@
+# Base Kustomization for cert-manager platform CA resources.
+# Overlays (staging/prod) include this base and add environment labels.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+  - issuers.yaml  # Bootstrap issuer, platform CA Certificate, and platform-ca-issuer

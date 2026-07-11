@@ -1,0 +1,93 @@
+---
+description: Inline comments on all generated code — plain language for beginners
+alwaysApply: true
+---
+
+# Inline comments (explain for beginners)
+
+Every piece of **new or changed code** you generate must include **inline comments** in plain, human-readable language. Write as if explaining to someone new to the topic — no jargon without a short explanation.
+
+See also: `commit-style.mdc`, `git-workflow.mdc`.
+
+## When to comment
+
+Comment **every logical unit** you add or edit:
+
+| Language / file | Comment what |
+|-----------------|--------------|
+| **Terraform** (`.tf`) | Each resource, module, variable, output, and non-obvious argument |
+| **Kubernetes / GitOps** (`.yaml`) | Each manifest, major spec section, and policy rule |
+| **GitHub Actions** (`.yml`) | Each job, step, and important env/input |
+| **Shell scripts** | Each block and non-trivial command |
+| **HCL templates** (`.tpl`) | Placeholders and what they receive at apply time |
+
+If you touch a file, the **changed sections** must be commented. Do not leave large uncommented blocks you wrote.
+
+## How to write comments
+
+- Use **simple words** — say what it does and *why*, not just the identifier name.
+- One idea per comment; split long explanations across 2–3 short lines.
+- **Do not** mention AI, agents, or tools in comments.
+- **Do not** write comments that only repeat the code (`# set name to foo` above `name = "foo"`).
+- **Do** explain purpose, connections, and gotchas a beginner would miss.
+
+### Good (Terraform)
+
+```hcl
+# Private subnets for EKS worker nodes — not reachable from the public internet
+resource "aws_subnet" "private" {
+  # Spread workers across zones so one AZ outage does not take down the cluster
+  availability_zone = var.azs[count.index]
+}
+
+# Lets pods use AWS APIs (S3, ELB, etc.) without long-lived keys on the node
+module "ebs_csi_irsa" {
+  attach_ebs_csi_policy = true
+}
+```
+
+### Good (Kubernetes)
+
+```yaml
+# STRICT = all pod traffic in this namespace must use mutual TLS; no plaintext fallback
+apiVersion: security.istio.io/v1beta1
+kind: PeerAuthentication
+spec:
+  mtls:
+    mode: STRICT
+```
+
+### Bad
+
+```hcl
+# cluster name
+cluster_name = var.cluster_name
+
+# create subnet
+resource "aws_subnet" "private" { ... }
+```
+
+## Syntax by language
+
+| Language | Comment style |
+|----------|----------------|
+| Terraform, HCL, YAML `#` workflows | `# comment` |
+| YAML Kubernetes | `# comment` on its own line above the key |
+| Shell | `# comment` |
+| JSON | Avoid JSON with comments; prefer YAML or add a sibling `.md` only if JSON is required |
+
+Do not add invalid comments inside JSON files.
+
+## Scope and proportion
+
+- **New files:** comment throughout.
+- **Edits:** comment every section you add or change; leave unrelated legacy code as-is unless the user asks for a full pass.
+- **Generated boilerplate** (e.g. long IAM policy JSON): comment the block header and any non-obvious statement IDs or actions.
+- **Copy-paste examples in docs:** comments optional in markdown prose; **code blocks in repo files** follow this rule.
+
+## Agent checklist before commit
+
+1. Would a beginner understand each resource/block without reading external docs?
+2. Are all **my** new/changed sections commented?
+3. Are comments in plain language (no unexplained acronyms)?
+4. Did I avoid agent/tool attribution in comments?

@@ -1,0 +1,118 @@
+---
+description: Git commit style — small, focused commits with human-readable messages
+alwaysApply: true
+---
+
+# Commit style
+
+Write commits the way **the repository owner** would: small, logical steps with clear messages. Commits appear under the user's name and email (see `git-workflow.mdc`), not the Cursor agent.
+
+## When to commit
+
+- Commit after each **logical unit of work** is complete and consistent (e.g. one module, one doc, one app overlay).
+- Prefer **several small commits** over one large “everything” commit.
+- Commit **before** long test runs or risky refactors so progress is preserved.
+- Do not commit broken or half-finished states unless explicitly saving WIP on a draft branch (use `WIP:` prefix).
+
+## Commit size
+
+| Good | Avoid |
+|------|--------|
+| One Terraform module or one environment | Entire `terraform/` tree in one commit |
+| One GitOps component (e.g. cert-manager) | Full platform bundle in one commit |
+| One doc or one README section | All docs + code together |
+| Fix one bug or one review comment | Mixed refactor + feature + docs |
+
+Aim for **~50–400 lines changed** per commit when possible. Large refactors may be bigger, but split when you can.
+
+## Message format
+
+Use **imperative mood**, present tense, as if the developer is completing the sentence: “This commit will…”
+
+Do not mention Cursor, agents, or AI in commit messages.
+
+```
+<type>: <short summary in lowercase, no period>
+
+<optional body — why, not what files changed>
+```
+
+### Types
+
+- `feat` — new capability (module, app, platform component)
+- `fix` — bug or broken config
+- `docs` — documentation only
+- `chore` — tooling, CI, .gitignore, deps
+- `refactor` — behavior unchanged, structure improved
+- `test` — tests only
+
+### Summary line
+
+- **≤ 72 characters**
+- Specific: say *what* changed, not “update files”
+- No vague messages: `fix stuff`, `wip`, `changes`, `update repo`
+
+### Body (use when helpful)
+
+- Explain **why**, trade-offs, or follow-ups
+- Wrap at ~72 characters
+- Separate summary and body with a blank line
+
+## Examples
+
+**Good:**
+
+```
+feat(terraform): add vpc module for multi-az staging and prod
+
+Private and public subnets with NAT; tags for ELB and internal
+load balancers. Staging may use a single NAT gateway to save cost.
+```
+
+```
+feat(gitops): add cert-manager and platform CA issuers
+
+Bootstrap self-signed issuer, platform CA certificate, and
+ClusterIssuer used by istio-csr for mesh mTLS.
+```
+
+```
+docs: add bootstrap guide for two-phase EKS apply
+
+Document targeted apply for VPC/EKS before Helm addons so Argo CD
+install does not fail on a fresh cluster.
+```
+
+**Bad:**
+
+```
+Scaffold AWS EKS platform with GitOps, mTLS, and demo app
+
+Add production-ready foundation for staging and prod...
+(everything in one commit)
+```
+
+```
+update files
+```
+
+```
+fix
+```
+
+## Push and PR workflow
+
+Branching, push-after-every-change, and merge-via-PR rules live in `git-workflow.mdc`. Summary:
+
+- Never push directly to `main`; use `feat/`, `fix/`, `chore/`, or `docs/` branches (see `git-workflow.mdc`).
+- Push after every commit; do not hoard local-only work.
+- Open or update a draft PR for each feature branch.
+
+When amending history on a shared branch, only use `--amend` or force-push if the user explicitly requests it.
+
+## Agent checklist before each commit
+
+1. Is this one coherent change?
+2. Does the summary describe the change in plain language?
+3. Would a teammate understand the intent without opening the diff?
+4. Are unrelated edits split into separate commits?

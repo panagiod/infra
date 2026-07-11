@@ -1,0 +1,157 @@
+# mTLS demo application — base manifests
+# Simple two-tier app (frontend calls backend) to validate Istio mTLS, injection,
+# and authorization policies in a dedicated namespace.
+
+# Namespace for the demo workloads with Istio automatic sidecar injection enabled.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: mtls-demo
+  labels:
+    istio-injection: enabled  # Istio mutating webhook injects Envoy into every pod here
+---
+# Backend Deployment — HTTP echo server that receives requests from the frontend.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: backend
+  namespace: mtls-demo
+  labels:
+    app: backend
+    version: v1  # Version label useful for canary/traffic splitting later
+spec:
+  replicas: 1  # Base count; prod overlay scales this up
+  selector:
+    matchLabels:
+      app: backend
+      version: v1
+  template:
+    metadata:
+      labels:
+        app: backend
+        version: v1  # Must match selector so Service can route traffic to these pods
+    spec:
+      containers:
+        - name: backend
+          image: gcr.io/google-containers/echoserver:1.10  # Lightweight HTTP echo for demos
+          ports:
+            - containerPort: 8080
+              name: http
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 200m
+              memory: 128Mi
+          securityContext:
+            allowPrivilegeEscalation: false  # Prevent container from gaining more privileges
+            capabilities:
+              drop:
+                - ALL  # Drop all Linux capabilities for defense in depth
+---
+# Backend Service — stable DNS name "backend" inside the namespace for frontend curls.
+apiVersion: v1
+kind: Service
+metadata:
+  name: backend
+  namespace: mtls-demo
+  labels:
+    app: backend
+spec:
+  selector:
+    app: backend  # Routes to pods with label app=backend
+  ports:
+    - name: http
+      port: 8080       # Port other pods use (e.g. http://backend:8080)
+      targetPort: 8080 # Port on the container
+---
+# Frontend Deployment — periodically calls the backend to prove mesh connectivity.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: frontend
+  namespace: mtls-demo
+  labels:
+    app: frontend
+    version: v1
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: frontend
+      version: v1
+  template:
+    metadata:
+      labels:
+        app: frontend
+        version: v1
+    spec:
+      containers:
+        - name: frontend
+          image: curlimages/curl:8.7.1  # Minimal image with curl for outbound HTTP checks
+          command:
+            - sh
+            - -c
+            - |
+              # Loop forever: traffic goes through Envoy sidecars with mTLS between pods
+              while true; do
+                echo "Calling backend..."
+                curl -sf http://backend:8080/ || echo "request failed"
+                sleep 30
+              done
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 200m
+              memory: 128Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true  # Container cannot write to root filesystem
+            runAsNonRoot: true
+            runAsUser: 65532  # Non-root UID reduces impact if the container is compromised
+            capabilities:
+              drop:
+                - ALL
+---
+# Frontend Service — exposes the frontend pod (mainly for debugging; traffic is outbound).
+apiVersion: v1
+kind: Service
+metadata:
+  name: frontend
+  namespace: mtls-demo
+  labels:
+    app: frontend
+spec:
+  selector:
+    app: frontend
+  ports:
+    - name: http
+      port: 8080
+      targetPort: 8080
+---
+# AuthorizationPolicy — only allow the frontend's identity to reach the backend.
+# With mTLS STRICT, Istio knows the caller's service account principal and can ALLOW
+# or DENY based on identity, not just IP addresses.
+apiVersion: security.istio.io/v1beta1
+kind: AuthorizationPolicy
+metadata:
+  name: backend-allow-frontend
+  namespace: mtls-demo
+spec:
+  selector:
+    matchLabels:
+      app: backend  # Policy attaches to backend pods only
+  action: ALLOW  # Explicit allow list; default deny when Istio authz is enabled
+  rules:
+    - from:
+        - source:
+            principals:
+              # Only pods using the default ServiceAccount in mtls-demo may call backend
+              - cluster.local/ns/mtls-demo/sa/default
+      to:
+        - operation:
+            ports:
+              - "8080"  # Limit allowed traffic to the backend HTTP port

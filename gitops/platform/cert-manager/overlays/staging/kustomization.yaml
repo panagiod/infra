@@ -1,0 +1,11 @@
+# Staging overlay — reuses base CA manifests with staging metadata.
+# Kustomize merges ../../base and applies the labels below to every resource.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+  - ../../base  # Shared issuers.yaml; no staging-specific CA logic needed yet
+
+# Tag all objects so you can filter "environment=staging" in kubectl or monitoring.
+commonLabels:
+  environment: staging

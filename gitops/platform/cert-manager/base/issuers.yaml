@@ -1,0 +1,46 @@
+# Platform Certificate Authority (CA) — base manifests
+# These resources create an internal CA that other cluster components (Istio CSR,
+# workloads) can use instead of public CAs or self-signed per-service certs.
+
+# bootstrap-issuer — One-time self-signed issuer to mint the root CA cert
+# A ClusterIssuer works cluster-wide. selfSigned means cert-manager signs certs
+# locally without an external CA; we only use this to bootstrap the real platform CA.
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: bootstrap-issuer
+spec:
+  selfSigned: {}  # No external authority; cert-manager generates the key pair
+---
+# platform-ca — Root CA certificate stored as a Kubernetes Secret
+# isCA: true marks this cert as a Certificate Authority that can sign other certs.
+# The resulting secret (platform-ca-secret) is referenced by platform-ca-issuer below.
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: platform-ca
+  namespace: cert-manager  # Lives alongside the cert-manager controller
+spec:
+  isCA: true  # This certificate may sign downstream TLS certs
+  commonName: platform-ca  # Subject CN shown on the CA certificate
+  secretName: platform-ca-secret  # Where cert-manager stores tls.crt and tls.key
+  duration: 87600h  # ~10 years before the CA cert itself expires
+  renewBefore: 720h  # Start renewal 30 days before expiry
+  privateKey:
+    algorithm: ECDSA  # Smaller, modern keys compared to RSA
+    size: 256
+  issuerRef:
+    name: bootstrap-issuer  # Signed by the temporary bootstrap issuer above
+    kind: ClusterIssuer
+    group: cert-manager.io
+---
+# platform-ca-issuer — Long-lived issuer backed by the platform CA secret
+# After bootstrap, all mesh and platform certs should be issued through this
+# ClusterIssuer so they chain to the same trusted root.
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: platform-ca-issuer
+spec:
+  ca:
+    secretName: platform-ca-secret  # Uses the CA cert/key from the Certificate above
