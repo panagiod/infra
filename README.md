@@ -1,160 +1,73 @@
 # infra
 
-Production-ready, multi-cloud Kubernetes platform. **Phase 1** delivers AWS EKS and Azure AKS with staging and prod clusters, a GitOps-managed platform bundle (cert-manager, Istio mTLS, monitoring), and a demo application.
+Multi-cloud Kubernetes platform (phase 1): **GitOps-managed** Istio mTLS, cert-manager, monitoring, and a demo app — on **local kind**, **AWS EKS**, or **Azure AKS**.
 
-## What this repository contains
+**New here?** → [docs/getting-started.md](docs/getting-started.md)
 
-| Path | Purpose |
-|------|---------|
-| [`terraform/`](terraform/) | AWS EKS + Azure AKS for staging and prod |
-| [`gitops/`](gitops/) | Argo CD app-of-apps, platform components, workloads |
-| [`docs/`](docs/) | Architecture, [QUICKSTART](docs/QUICKSTART.md), [local dev](docs/local-dev.md), [Azure](docs/azure.md) |
-| [`.github/workflows/`](.github/workflows/) | Terraform and manifest validation CI |
-
-## Architecture (phase 1)
-
-- **Managed Kubernetes:** AWS EKS and Azure AKS (staging + prod)
-- **GitOps:** Argo CD app-of-apps per cluster
-- **mTLS:** Istio with STRICT peer authentication + cert-manager via istio-csr
-- **Observability:** kube-prometheus-stack (Prometheus, Grafana, Alertmanager)
-- **Ingress:** Istio Gateway API gateway with TLS from cert-manager
-
-See [docs/architecture.md](docs/architecture.md) for details.
-
-## Prerequisites
-
-- AWS account with permissions for VPC, EKS, IAM, EC2, ELB
-- Terraform `>= 1.5`
-- `kubectl` `>= 1.28`
-- AWS CLI configured (`aws configure` or environment credentials)
-- An S3 bucket and DynamoDB table for Terraform remote state (see [docs/bootstrap.md](docs/bootstrap.md))
-- Helm `>= 3.12` (for optional manual bootstrap steps)
-
-## Quick start (plug and play)
-
-**Local (free)** — see [docs/local-dev.md](docs/local-dev.md):
+## Quick start (no cloud cost)
 
 ```bash
 chmod +x scripts/bootstrap-local.sh
 ./scripts/bootstrap-local.sh
+LOCAL=true ./scripts/verify-platform.sh
 ```
 
-**AWS** — see [docs/QUICKSTART.md](docs/QUICKSTART.md):
+See [docs/local-dev.md](docs/local-dev.md).
 
-```bash
-export TF_STATE_BUCKET="your-org-terraform-state"
-export TF_LOCK_TABLE="your-org-terraform-locks"
-chmod +x scripts/bootstrap-aws.sh
-./scripts/bootstrap-aws.sh
-```
+## Quick start (cloud)
 
-**Azure** — see [docs/azure.md](docs/azure.md):
+| Cloud | Command |
+|-------|---------|
+| AWS | [docs/QUICKSTART.md](docs/QUICKSTART.md) — `./scripts/bootstrap-aws.sh` |
+| Azure | [docs/azure.md](docs/azure.md) — `./scripts/bootstrap-azure.sh` |
 
-```bash
-export TF_STATE_RG="infra-tfstate-rg"
-export TF_STATE_STORAGE_ACCOUNT="yourorgtfstate"
-chmod +x scripts/bootstrap-azure.sh
-./scripts/bootstrap-azure.sh
-```
+## What's in this repo
 
-## Manual quick start
+| Path | Purpose |
+|------|---------|
+| [`terraform/`](terraform/) | AWS EKS + Azure AKS modules and environments |
+| [`gitops/`](gitops/) | Argo CD app-of-apps, platform bundle, mtls-demo |
+| [`scripts/`](scripts/) | Bootstrap and verify scripts |
+| [`docs/`](docs/) | [Full documentation index](docs/README.md) |
 
-### 1. Bootstrap remote state
+## Platform (same on every cluster)
 
-Create an S3 bucket and DynamoDB lock table, then copy backend config:
+- **GitOps:** Argo CD app-of-apps per environment
+- **mTLS:** Istio STRICT + cert-manager via istio-csr
+- **Observability:** kube-prometheus-stack
+- **Ingress:** Istio gateway with platform CA TLS
 
-```bash
-cp terraform/environments/staging/backend.hcl.example terraform/environments/staging/backend.hcl
-cp terraform/environments/prod/backend.hcl.example terraform/environments/prod/backend.hcl
-# Edit bucket, key, region, and dynamodb_table in each file
-```
-
-### 2. Configure environments
-
-```bash
-cp terraform/environments/staging/terraform.tfvars.example terraform/environments/staging/terraform.tfvars
-cp terraform/environments/prod/terraform.tfvars.example terraform/environments/prod/terraform.tfvars
-```
-
-Set at minimum:
-
-- `aws_region`
-- `cluster_name` (e.g. `infra-staging`, `infra-prod`)
-- `gitops_repo_url` (this repository URL for Argo CD)
-
-### 3. Provision staging
-
-```bash
-cd terraform/environments/staging
-terraform init -backend-config=backend.hcl
-
-# First apply creates VPC + EKS; second apply installs Helm addons (Argo CD, ALB controller).
-terraform apply -target=module.vpc -target=module.eks
-terraform plan -out=tfplan
-terraform apply tfplan
-```
-
-Repeat for prod in `terraform/environments/prod`.
-
-> **Note:** On first bootstrap, set `gitops_target_revision` in `terraform.tfvars` to the branch that contains the GitOps manifests (e.g. `main` after merge, or your feature branch while testing).
-
-### 4. Access clusters
-
-```bash
-aws eks update-kubeconfig --region <region> --name infra-staging
-kubectl get nodes
-```
-
-Argo CD is installed by Terraform and syncs the platform bundle from this repo.
-
-### 5. Verify mTLS demo
-
-```bash
-kubectl -n mtls-demo get pods
-kubectl -n istio-system get peerauthentication
-```
-
-Follow [docs/bootstrap.md](docs/bootstrap.md) for Argo CD UI access, Grafana credentials, and ingress DNS.
+Details: [docs/architecture.md](docs/architecture.md)
 
 ## Repository layout
 
 ```
 terraform/
   modules/
-    vpc/                 # Multi-AZ VPC
-    eks/                 # EKS cluster, node groups, IRSA, add-ons
+    vpc/, eks/              # AWS
+    azure/vnet/, azure/aks/ # Azure
   environments/
-    staging/
-    prod/
+    staging/, prod/         # AWS
+    azure/staging/, azure/prod/
+  bootstrap/                # GitHub OIDC one-time stacks
 gitops/
-  bootstrap/argocd/      # Helm values for Argo CD
-  clusters/              # Per-cluster app-of-apps roots
-  platform/              # cert-manager, istio, monitoring, policies
-  apps/mtls-demo/        # Sample mTLS workload
-docs/
+  clusters/                 # Per-env Argo CD roots (staging, prod)
+  platform/                 # cert-manager, istio, monitoring, policies
+  apps/mtls-demo/
+scripts/                    # bootstrap-local, bootstrap-aws, verify-platform, …
+hack/kind/                  # kind + MetalLB config for local dev
+docs/                       # See docs/README.md
 ```
 
-## Environments
+## Project status
 
-| | Staging | Prod |
-|---|---------|------|
-| Purpose | Soak tests, upgrade validation | Production workloads |
-| Nodes | Smaller instance types, 2–4 nodes | Larger types, 3–6+ nodes |
-| mTLS | STRICT (same as prod) | STRICT |
-| Platform versions | Latest stable from upstream indexes | Latest stable from upstream indexes |
-
-## Multi-cloud roadmap
-
-AWS and Azure Terraform paths are implemented with shared GitOps. GCP modules will mirror the same layout:
-
-- `terraform/modules/` cloud-specific networking and Kubernetes modules
-- Shared `gitops/platform/` bundle across all clusters
+Phase 1 **scaffold** — feature-complete in repo, **not** production-proven until you run verify on a real cluster. See [docs/project-status.md](docs/project-status.md).
 
 ## Contributing
 
-1. Branch from `main` using `feat/`, `fix/`, `chore/`, or `docs/` prefixes (e.g. `feat/my-change`)
-2. Run `terraform fmt -recursive` and open a PR
-3. CI validates Terraform and Kubernetes manifests
+1. Branch from `main` (`feat/`, `fix/`, `chore/`, `docs/`)
+2. Open a PR — CI validates Terraform and GitOps (Kind smoke on `gitops/**` changes)
+3. No cloud needed for manifest-only changes
 
 ## License
 

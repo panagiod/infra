@@ -148,7 +148,7 @@ print_access_hints() {
   printf 'Argo CD admin password:\n  kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath="{.data.password}" | base64 -d; echo\n'
   printf '\nVerify:\n  LOCAL=true CLUSTER_NAME=%s ./scripts/verify-platform.sh\n' "${CLUSTER_NAME}"
   printf '\nDestroy:\n  DESTROY=true ./scripts/bootstrap-local.sh\n'
-  printf '\nSee docs/local-dev.md for testing local Git changes.\n'
+  printf '\nSee docs/local-dev.md and docs/verify.md for next steps.\n'
 }
 
 main() {

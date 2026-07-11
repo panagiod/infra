@@ -57,6 +57,8 @@ Never share private keys between clusters. Trust bundles may include both interm
 
 ## Metrics and alerts
 
+Alert rules: `gitops/platform/monitoring/alerts/cert-manager.yaml`. Setup guide: [alerting.md](alerting.md).
+
 Alert on:
 
 - `certmanager_certificate_expiration_timestamp_seconds` < 7 days

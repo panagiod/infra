@@ -1,6 +1,8 @@
 # Upgrade runbook
 
-## Kubernetes (EKS)
+> Platform verification after upgrades: [verify.md](verify.md)
+
+## Kubernetes (EKS / AKS)
 
 ### Staging
 
@@ -25,9 +27,15 @@
 
 For large jumps, add a new node group on the target version, cordon/drain the old group, then remove it in Terraform.
 
+### AKS (Azure)
+
+Same flow in `terraform/environments/azure/staging` and `azure/prod` — update `kubernetes_version`, plan, apply, verify with `./scripts/verify-platform.sh`.
+
 ## Platform components (GitOps)
 
-Platform Helm charts resolve to the **latest stable version** from each upstream Helm repository (no `targetRevision` pin). Git sources track `main` and promote via overlays.
+Platform Helm charts resolve to the **latest stable version** from each upstream Helm repository (no `targetRevision` pin). This is intentional for phase 1; pin versions before production or document promotions in the table below.
+
+Git sources use `cluster.env` for repo URL and branch. See [docs/README.md](README.md#gitops-configuration).
 
 ## Istio revision tags (advanced)
 

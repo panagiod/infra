@@ -1,5 +1,7 @@
 # Azure
 
+> **Path overview:** [getting-started.md](getting-started.md)
+
 Azure support mirrors the AWS layout: **Terraform creates the cluster and bootstraps Argo CD**, **Argo CD deploys the platform** from the shared `gitops/` tree.
 
 ## Status

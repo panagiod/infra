@@ -2,42 +2,43 @@
 
 ## Goals
 
-- Production-ready managed Kubernetes on AWS (EKS)
-- Staging and prod clusters with identical platform behavior
+- Managed Kubernetes on **AWS (EKS)**, **Azure (AKS)**, and **local kind** for zero-cost dev
+- Staging and prod clusters with identical **GitOps** platform behavior
 - mTLS everywhere via Istio
 - Certificates issued and rotated by cert-manager (istio-csr for mesh, ClusterIssuer for ingress)
 - GitOps-driven platform lifecycle with Argo CD
-- Foundation for future multi-cloud expansion (GCP, Azure)
 
 ## Cluster topology
 
 ```mermaid
 flowchart TB
-  subgraph aws["AWS Account"]
-    subgraph stg["Staging EKS"]
-      STG_CP["Managed control plane"]
-      STG_NP["Node pools - 3 AZs"]
-      STG_ARGO["Argo CD"]
-      STG_PLAT["Platform bundle"]
-      STG_APP["mtls-demo"]
-    end
+  GIT["GitHub: panagiod/infra"]
 
-    subgraph prd["Prod EKS"]
-      PRD_CP["Managed control plane"]
-      PRD_NP["Node pools - 3 AZs"]
-      PRD_ARGO["Argo CD"]
-      PRD_PLAT["Platform bundle"]
-      PRD_APP["mtls-demo"]
-    end
+  subgraph local["Local (kind)"]
+    KIND["kind cluster"]
+    KIND_ARGO["Argo CD"]
+    KIND_PLAT["Platform bundle"]
   end
 
-  GIT["GitHub: panagiod/infra"] --> STG_ARGO
-  GIT --> PRD_ARGO
-  STG_ARGO --> STG_PLAT
-  STG_ARGO --> STG_APP
-  PRD_ARGO --> PRD_PLAT
-  PRD_ARGO --> PRD_APP
+  subgraph aws["AWS"]
+    STG["Staging EKS"]
+    PRD["Prod EKS"]
+  end
+
+  subgraph azure["Azure"]
+    ASTG["Staging AKS"]
+    APRD["Prod AKS"]
+  end
+
+  GIT --> KIND_ARGO
+  GIT --> STG
+  GIT --> PRD
+  GIT --> ASTG
+  GIT --> APRD
+  KIND_ARGO --> KIND_PLAT
 ```
+
+Each environment syncs the same `gitops/platform/` tree; only Terraform (networking + cluster bootstrap) differs by cloud.
 
 ## Platform bundle (install order)
 
@@ -50,9 +51,9 @@ Argo CD sync waves enforce bootstrap order:
 | 2 | Istio base | istio-system |
 | 3 | istiod | istio-system |
 | 4 | istio-csr | cert-manager |
-| 5 | Gateway API CRDs + Istio gateway | istio-system |
+| 5 | Istio gateway + ingress TLS | istio-system |
 | 6 | PeerAuthentication STRICT default | istio-system |
-| 7 | kube-prometheus-stack | monitoring |
+| 7 | kube-prometheus-stack + alert rules | monitoring |
 | 8 | Kyverno policies | kyverno |
 | 9 | mtls-demo app | mtls-demo |
 
@@ -67,47 +68,45 @@ flowchart LR
   CM --> ING["Gateway TLS cert"]
 ```
 
-Phase 1 uses a **platform CA ClusterIssuer** (cert-manager `selfSigned` bootstrap → `CA` issuer). Replace with your custom cert-manager provider backed by KMS/HSM without changing the mesh layout. See [cert-manager-provider.md](cert-manager-provider.md).
+Phase 1 uses a **platform CA ClusterIssuer** (bootstrap self-signed → CA issuer). Replace with your PKI without changing the mesh layout. See [cert-manager-provider.md](cert-manager-provider.md).
 
 ## Networking
 
-- VPC with public subnets (load balancers) and private subnets (nodes)
-- NAT gateway per AZ in prod; single NAT in staging (cost optimization)
-- EKS API endpoint: private + public (restrict public CIDRs in prod `terraform.tfvars`)
-- AWS Load Balancer Controller installed for Istio/Gateway service type LoadBalancer
+| Cloud | Pattern |
+|-------|---------|
+| **AWS** | VPC with public/private subnets, NAT (single in staging), ALB controller |
+| **Azure** | VNet + AKS subnet; Azure LB for `LoadBalancer` services |
+| **Local** | kind + MetalLB for LoadBalancer IPs |
+
+Restrict Kubernetes API access in prod via `cluster_endpoint_public_access_cidrs` (AWS) or `api_server_authorized_ip_ranges` (Azure).
 
 ## Identity
 
-- **IRSA** (IAM Roles for Service Accounts) for:
-  - AWS Load Balancer Controller
-  - cert-manager (Route53 DNS-01 when configured)
-  - cluster-autoscaler
-- **Mesh identity:** Istio SPIFFE IDs via istio-csr-issued certificates
+| Cloud | Cluster integrations | Mesh |
+|-------|---------------------|------|
+| **AWS** | IRSA for LB controller, autoscaler, EBS CSI | istio-csr |
+| **Azure** | AKS managed identity; node pool autoscaling | istio-csr |
+| **Local** | N/A | istio-csr |
 
 ## Observability
 
 - Prometheus scrapes Kubernetes, Istio, and cert-manager metrics
-- Grafana dashboards for mesh and cert expiry
-- Alertmanager routes (configure receivers in overlay)
-- Staging and prod each run a full stack; future phase may add centralized Mimir/Loki
+- Grafana dashboards; Alertmanager routes (configure receivers — see [alerting.md](alerting.md))
+- Certificate expiry alerts in `gitops/platform/monitoring/alerts/`
 
 ## Security baseline
 
-- Istio `PeerAuthentication` STRICT in `istio-system` (root policy)
-- Kyverno: require Istio injection label on demo namespaces
-- Pod Security: namespaces labeled `pod-security.kubernetes.io/enforce: restricted` where compatible
-- Private worker nodes; no SSH by default
+- Istio `PeerAuthentication` STRICT in `istio-system`
+- Kyverno: require Istio injection on demo namespaces
+- Separate Terraform state and platform CA per environment
+- Lab defaults (open API CIDRs, bootstrap CA) — tighten before production
 
 ## State and blast radius
 
-- Separate Terraform state per environment (`staging`, `prod`)
-- Separate EKS clusters (no shared etcd)
-- Separate platform CA intermediates per cluster (via cert-manager)
+- Separate Terraform state per environment and cloud
+- Separate clusters (no shared control plane)
+- Shared GitOps repo; per-env overlays in `gitops/clusters/` and `gitops/platform/*/overlays/`
 
 ## Upgrade strategy
 
-1. Bump Kubernetes version in staging Terraform → apply → roll node groups
-2. Soak staging; run synthetic checks on mtls-demo
-3. Bump platform Helm versions in `gitops/platform/` staging overlay
-4. Promote Terraform + GitOps changes to prod
-5. Document versions in [upgrades.md](upgrades.md)
+See [upgrades.md](upgrades.md). Promote staging → prod after soak and `verify-platform.sh`.

@@ -1,5 +1,7 @@
 # Local development (zero cloud cost)
 
+> **Start here if you have no cloud budget:** this is the recommended path. Overview: [getting-started.md](getting-started.md).
+
 Run the full GitOps platform on a **kind** cluster in Docker — no AWS, Azure, or Terraform bill.
 
 ## Prerequisites
@@ -33,6 +35,8 @@ This will:
 ```bash
 LOCAL=true ./scripts/verify-platform.sh
 ```
+
+Details: [verify.md](verify.md)
 
 ### Tear down
 

@@ -1,5 +1,9 @@
 # Alerting setup
 
+Configure Prometheus rules and Alertmanager receivers after the monitoring stack syncs.
+
+See also: [getting-started.md](getting-started.md) · [verify.md](verify.md)
+
 ## Prometheus rules
 
 `cert-manager.yaml` defines alerts for certificate expiry (warning at 7 days, critical at 24 hours). Deployed by the `monitoring-alerts` Argo CD Application.
