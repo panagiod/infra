@@ -8,11 +8,11 @@ terraform {
     }
     helm = {
       source  = "hashicorp/helm"
-      version = ">= 2.12"
+      version = "~> 2.12"
     }
     kubectl = {
       source  = "alekc/kubectl"
-      version = ">= 2.7"
+      version = "~> 2.4"
     }
   }
 
@@ -68,9 +68,9 @@ module "vpc" {
 module "eks" {
   source = "../../modules/eks"
 
-  cluster_name    = var.cluster_name
+  cluster_name       = var.cluster_name
   kubernetes_version = var.kubernetes_version
-  environment     = "staging"
+  environment        = "staging"
 
   vpc_id             = module.vpc.vpc_id
   private_subnet_ids = module.vpc.private_subnets
