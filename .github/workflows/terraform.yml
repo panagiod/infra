@@ -14,31 +14,46 @@ on:
       - 'terraform/**'
 
 jobs:
-  validate:
+  fmt:
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        # Validate both staging and prod root modules in parallel
-        environment: [staging, prod]
     defaults:
       run:
-        working-directory: terraform/environments/${{ matrix.environment }}
+        working-directory: terraform
     steps:
       - uses: actions/checkout@v4
 
-      # Install the latest stable Terraform CLI
       - uses: hashicorp/setup-terraform@v3
         with:
           terraform_version: latest
 
-      # Fail the job if files are not formatted with terraform fmt
       - name: Terraform fmt
-        run: terraform fmt -check -recursive ../..
+        run: terraform fmt -check -recursive .
 
-      # Download providers and modules without configuring remote S3 backend
+  validate:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - name: aws-staging
+            working_directory: terraform/environments/staging
+          - name: aws-prod
+            working_directory: terraform/environments/prod
+          - name: azure-staging
+            working_directory: terraform/environments/azure/staging
+          - name: azure-prod
+            working_directory: terraform/environments/azure/prod
+    defaults:
+      run:
+        working-directory: ${{ matrix.working_directory }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: latest
+
       - name: Terraform init
         run: terraform init -backend=false
 
-      # Syntax-check modules and provider schemas
       - name: Terraform validate
         run: terraform validate
