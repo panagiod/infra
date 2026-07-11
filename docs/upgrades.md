@@ -27,19 +27,7 @@ For large jumps, add a new node group on the target version, cordon/drain the ol
 
 ## Platform components (GitOps)
 
-Platform versions are pinned in Helm values under `gitops/platform/*/overlays/`.
-
-1. Bump chart version in **staging** overlay
-2. Commit → Argo CD syncs staging
-3. Run smoke tests on `mtls-demo`
-4. Promote same version to **prod** overlay
-5. Argo CD syncs prod
-
-| Component | Values file |
-|-----------|-------------|
-| cert-manager | `gitops/platform/cert-manager/overlays/*/values.yaml` |
-| Istio | `gitops/platform/istio/overlays/*/values-istiod.yaml` |
-| Prometheus | `gitops/platform/monitoring/overlays/*/values.yaml` |
+Platform Helm charts resolve to the **latest stable version** from each upstream Helm repository (no `targetRevision` pin). Git sources track `main` and promote via overlays.
 
 ## Istio revision tags (advanced)
 

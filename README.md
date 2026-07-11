@@ -114,7 +114,7 @@ docs/
 | Purpose | Soak tests, upgrade validation | Production workloads |
 | Nodes | Smaller instance types, 2–4 nodes | Larger types, 3–6+ nodes |
 | mTLS | STRICT (same as prod) | STRICT |
-| Platform versions | Pinned in Git, promoted to prod | Pinned in Git |
+| Platform versions | Latest stable from upstream indexes | Latest stable from upstream indexes |
 
 ## Multi-cloud roadmap
 
