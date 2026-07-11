@@ -1,10 +1,12 @@
-# Bootstrap guide
+# AWS bootstrap guide (manual)
 
-Step-by-step instructions to provision staging and prod on AWS and verify the platform.
+> **Prefer the script?** Use [QUICKSTART.md](QUICKSTART.md) (`./scripts/bootstrap-aws.sh`).
+>
+> **No cloud?** Use [local-dev.md](local-dev.md).
+
+Step-by-step manual Terraform for AWS staging and prod, plus post-bootstrap verification.
 
 ## 1. Remote state (one-time)
-
-Create resources in your AWS account:
 
 ```bash
 export AWS_REGION=us-east-1
@@ -24,8 +26,6 @@ aws dynamodb create-table \
   --region "$AWS_REGION"
 ```
 
-Copy and edit backend config for each environment:
-
 ```bash
 cp terraform/environments/staging/backend.hcl.example terraform/environments/staging/backend.hcl
 cp terraform/environments/prod/backend.hcl.example terraform/environments/prod/backend.hcl
@@ -38,14 +38,11 @@ cp terraform/environments/staging/terraform.tfvars.example terraform/environment
 cp terraform/environments/prod/terraform.tfvars.example terraform/environments/prod/terraform.tfvars
 ```
 
-| Variable | Staging example | Prod example |
-|----------|-----------------|--------------|
+| Variable | Staging | Prod |
+|----------|---------|------|
 | `cluster_name` | `infra-staging` | `infra-prod` |
-| `kubernetes_version` | `1.29` | `1.29` |
-| `node_instance_types` | `["t3.large"]` | `["m6i.large"]` |
-| `node_desired_size` | `2` | `3` |
+| `gitops_repo_url` | This repo URL | Same |
 | `single_nat_gateway` | `true` | `false` |
-| `gitops_repo_url` | `https://github.com/panagiod/infra` | same |
 
 ## 3. Apply Terraform
 
@@ -54,100 +51,25 @@ cp terraform/environments/prod/terraform.tfvars.example terraform/environments/p
 ```bash
 cd terraform/environments/staging
 terraform init -backend-config=backend.hcl
-
-# First apply creates VPC + EKS; second apply installs Helm addons (Argo CD, ALB controller).
 terraform apply -target=module.vpc -target=module.eks
-terraform plan -out=tfplan
-terraform apply tfplan
+terraform apply
 ```
 
-**Then prod:**
-
-```bash
-cd terraform/environments/prod
-terraform init -backend-config=backend.hcl
-terraform plan -out=tfplan
-terraform apply tfplan
-```
+Repeat for `terraform/environments/prod`.
 
 ## 4. Configure kubectl
 
 ```bash
 aws eks update-kubeconfig --region us-east-1 --name infra-staging
-aws eks update-kubeconfig --region us-east-1 --name infra-prod
 ```
 
-## 5. Verify Argo CD
-
-Argo CD is installed by the EKS module bootstrap Helm release.
+## 5. Verify
 
 ```bash
-kubectl -n argocd get pods
-kubectl -n argocd get applications
+./scripts/verify-platform.sh
 ```
 
-Initial admin password:
-
-```bash
-kubectl -n argocd get secret argocd-initial-admin-secret \
-  -o jsonpath='{.data.password}' | base64 -d && echo
-```
-
-Port-forward UI:
-
-```bash
-kubectl -n argocd port-forward svc/argocd-server 8080:443
-# https://localhost:8080
-```
-
-The root application `cluster-root` syncs platform components and `mtls-demo`.
-
-## 6. Verify platform
-
-```bash
-kubectl -n cert-manager get pods
-kubectl -n istio-system get pods
-kubectl -n monitoring get pods
-kubectl get clusterissuer
-kubectl -n istio-system get peerauthentication
-```
-
-## 7. Verify mTLS demo
-
-```bash
-kubectl -n mtls-demo get pods
-kubectl -n mtls-demo exec deploy/frontend -- wget -qO- http://backend:8080/
-```
-
-From outside the mesh (should fail without proper identity):
-
-```bash
-kubectl run curl --rm -it --image=curlimages/curl -- curl -sS http://backend.mtls-demo:8080/
-```
-
-## 8. Grafana
-
-```bash
-kubectl -n monitoring get secret kube-prometheus-stack-grafana \
-  -o jsonpath='{.data.admin-password}' | base64 -d && echo
-
-kubectl -n monitoring port-forward svc/kube-prometheus-stack-grafana 3000:80
-```
-
-## 9. Ingress / Gateway
-
-Set the gateway hostname in `gitops/clusters/<env>/cluster.env` and the matching overlay under `gitops/platform/istio/ingress-tls/overlays/<env>/`. Point DNS at the LoadBalancer:
-
-```bash
-kubectl -n istio-system get svc istio-ingressgateway
-kubectl -n istio-system get certificate istio-ingressgateway-certs
-```
-
-HTTPS uses the platform CA (browsers will not trust it until you use a public CA or install the CA bundle). For public trust, see [cert-manager-provider.md](cert-manager-provider.md).
-
-## 10. Alerting
-
-See [alerting.md](alerting.md) for Prometheus rules and Alertmanager receiver setup.
+Post-bootstrap checks (Argo CD UI, Grafana, ingress, mTLS demo): [verify.md](verify.md)
 
 ## Troubleshooting
 

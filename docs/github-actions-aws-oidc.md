@@ -61,7 +61,7 @@ The workflow `.github/workflows/terraform-plan.yml` requires:
 - `contents: read` — checkout code
 - `pull-requests: write` — post plan comment (optional)
 
-### 3. Open a PR
+### Open a PR
 
 Change any file under `terraform/environments/staging` or `prod`. The **Terraform plan** workflow runs `terraform plan` and comments on the PR.
 
