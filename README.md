@@ -125,7 +125,7 @@ AWS is implemented first. GCP and Azure modules will mirror:
 
 ## Contributing
 
-1. Branch from `main` using `cursor/<name>-3435`
+1. Branch from `main` using `feat/`, `fix/`, `chore/`, or `docs/` prefixes (e.g. `feat/my-change`)
 2. Run `terraform fmt -recursive` and open a PR
 3. CI validates Terraform and Kubernetes manifests
 
