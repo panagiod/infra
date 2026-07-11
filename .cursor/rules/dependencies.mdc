@@ -1,0 +1,86 @@
+---
+description: Use latest stable third-party versions; fix breakages instead of pinning
+alwaysApply: true
+---
+
+# Third-party dependencies
+
+Prefer **latest stable** releases for Helm charts, Terraform providers, modules, CI tools, and kubectl-related providers. Do not pin exact versions unless a documented upstream bug blocks latest — fix the underlying compatibility issue instead.
+
+See also: `git-workflow.mdc`, `commit-style.mdc`.
+
+## Principle
+
+| Do | Avoid |
+|----|--------|
+| Minimum version constraints (`>=`) for Terraform providers/modules | Exact pins (`1.8.5`, `~> 2.12`, `v1.14.5`) |
+| Omit chart `version` in Terraform `helm_release` (uses latest index entry) | Hardcoded Helm chart versions in Terraform |
+| Omit `targetRevision` on Argo CD **Helm** sources (latest chart) | Pinning Istio, cert-manager, Kyverno chart versions in GitOps |
+| Fetch latest stable in CI (e.g. Terraform `latest`, dynamic kustomize tag) | Pinning CI tool versions when a resolver script works |
+| Fix provider schema migrations (e.g. Helm v3 `kubernetes = {}`) | Downgrading providers to avoid schema updates |
+
+Keep `targetRevision: main` (or env branch) on **Git** sources — that tracks this repo, not a third-party version.
+
+## Terraform
+
+```hcl
+# Providers — minimum compatible, allow latest
+helm = {
+  source  = "hashicorp/helm"
+  version = ">= 2.12"
+}
+kubectl = {
+  source  = "alekc/kubectl"
+  version = ">= 2.0"
+}
+
+# Modules — minimum major, no upper cap
+version = ">= 20.0"   # eks module
+version = ">= 5.0"    # vpc / iam modules
+
+# helm_release — omit version attribute for latest chart
+resource "helm_release" "argocd" {
+  chart = "argo-cd"
+  # no version =
+}
+```
+
+When a provider major version breaks config (e.g. Helm 3.x):
+
+- Update HCL to the new schema (e.g. `kubernetes = { ... }` instead of `kubernetes { ... }` block).
+- Do **not** cap the provider at an older major unless the user explicitly requests it.
+
+## GitOps (Argo CD Helm applications)
+
+```yaml
+source:
+  repoURL: https://charts.jetstack.io
+  chart: cert-manager
+  # no targetRevision — Argo resolves latest from the Helm index
+  helm:
+    releaseName: cert-manager
+```
+
+## CI
+
+- **Terraform:** `terraform_version: latest` in `hashicorp/setup-terraform`.
+- **Kustomize:** resolve latest release tag from GitHub API, then run the install script with that tag.
+- Re-run CI after changes; fix failures at the root cause.
+
+## When pinning is acceptable
+
+Only with a short comment explaining the upstream issue and a link/issue to remove the pin later:
+
+```hcl
+# TODO: remove pin after <upstream-issue> — breaks IRSA on EKS 1.31
+version = "x.y.z"
+```
+
+Default: no pin.
+
+## Agent checklist
+
+1. Did I add a version pin? If yes, is there a fix instead?
+2. Does CI use latest stable resolvers?
+3. Are GitOps Helm apps free of `targetRevision` pins?
+4. If validate/plan fails on latest, did I fix config rather than downgrade?
