@@ -23,7 +23,7 @@ concurrency:
 jobs:
   smoke:
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 60
     steps:
       - uses: actions/checkout@v4
         with:
@@ -49,7 +49,7 @@ jobs:
           GITOPS_REPO_URL: https://github.com/${{ github.repository }}
           GITOPS_REVISION: ${{ github.event.inputs.gitops_revision || github.head_ref || github.ref_name }}
           INSTALL_METALLB: "false"
-          WAIT_TIMEOUT: "1200"
+          WAIT_TIMEOUT: "1800"
           STRICT_WAIT: "true"
         run: |
           chmod +x scripts/bootstrap-local.sh

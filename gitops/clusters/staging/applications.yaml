@@ -3,7 +3,7 @@
 # =============================================================================
 # This file tells Argo CD what to deploy on the staging cluster and in what
 # order. Each "Application" is one deployable unit (a Helm chart or a folder
-# of YAML from this Git repo). Sync waves (0, 1, 2, …) control install order
+# of YAML from this Git repo). spec.dependsOn controls install order
 # so dependencies (e.g. cert-manager before the CA) are ready first.
 # =============================================================================
 
@@ -12,15 +12,12 @@
 # -----------------------------------------------------------------------------
 # Installs cert-manager, which issues and renews TLS certificates inside the
 # cluster. Everything that needs HTTPS (Istio, apps) depends on this running
-# first. Wave 0 = earliest platform component.
+# first.
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
   name: cert-manager
   namespace: argocd  # Argo CD stores Application CRs in the argocd namespace
-  annotations:
-    # Sync wave 0: deploy before all other apps in this file
-    argocd.argoproj.io/sync-wave: "0"
   finalizers:
     # Ensures child resources are cleaned up if this Application is deleted
     - resources-finalizer.argocd.argoproj.io
@@ -37,7 +34,7 @@ spec:
         prometheus:
           enabled: true  # Expose metrics for monitoring
           servicemonitor:
-            enabled: false  # Prometheus Operator not installed until wave 7
+            enabled: false  # Prometheus Operator not installed until monitoring app
   destination:
     server: https://kubernetes.default.svc  # Deploy to the local cluster Argo runs on
     namespace: cert-manager
@@ -54,7 +51,7 @@ spec:
 # -----------------------------------------------------------------------------
 # Deploys our own CA (Certificate Authority) using cert-manager manifests from
 # this repo. Istio and other services trust certs signed by this CA. Must run
-# after cert-manager (wave 1) because it uses cert-manager CRs.
+# after cert-manager because it uses cert-manager CRs.
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
@@ -62,8 +59,6 @@ metadata:
   namespace: argocd
   labels:
     infra.platform/git-source: "true"
-  annotations:
-    argocd.argoproj.io/sync-wave: "1"
   finalizers:
     - resources-finalizer.argocd.argoproj.io
 spec:
@@ -90,14 +85,12 @@ spec:
 # istio-base — Istio CRDs and cluster-wide foundations
 # -----------------------------------------------------------------------------
 # Installs Istio "base" chart: CRDs and shared config. Does not run the control
-# plane yet; that is istiod (wave 3). Service mesh features need this layer first.
+# plane yet; that is istiod. Service mesh features need this layer first.
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
   name: istio-base
   namespace: argocd
-  annotations:
-    argocd.argoproj.io/sync-wave: "2"
   finalizers:
     - resources-finalizer.argocd.argoproj.io
 spec:
@@ -105,6 +98,7 @@ spec:
   source:
     repoURL: https://istio-release.storage.googleapis.com/charts
     chart: base
+    targetRevision: 1.24.2
     helm:
       releaseName: istio-base
       values: |
@@ -129,8 +123,6 @@ kind: Application
 metadata:
   name: istiod
   namespace: argocd
-  annotations:
-    argocd.argoproj.io/sync-wave: "3"
   finalizers:
     - resources-finalizer.argocd.argoproj.io
 spec:
@@ -138,6 +130,7 @@ spec:
   source:
     repoURL: https://istio-release.storage.googleapis.com/charts
     chart: istiod
+    targetRevision: 1.24.2
     helm:
       releaseName: istiod
       values: |
@@ -173,15 +166,14 @@ kind: Application
 metadata:
   name: istio-csr
   namespace: argocd
-  annotations:
-    argocd.argoproj.io/sync-wave: "4"
   finalizers:
     - resources-finalizer.argocd.argoproj.io
 spec:
   project: default
   source:
     repoURL: https://charts.jetstack.io
-    chart: cert-manager-istio-csr  # CSR = Certificate Signing Request bridge for Istio
+    chart: cert-manager-istio-csr
+    targetRevision: v0.14.2
     helm:
       releaseName: istio-csr
       values: |
@@ -221,8 +213,6 @@ kind: Application
 metadata:
   name: istio-gateway
   namespace: argocd
-  annotations:
-    argocd.argoproj.io/sync-wave: "5"
   finalizers:
     - resources-finalizer.argocd.argoproj.io
 spec:
@@ -230,6 +220,7 @@ spec:
   source:
     repoURL: https://istio-release.storage.googleapis.com/charts
     chart: gateway
+    targetRevision: 1.24.2
     helm:
       releaseName: istio-ingressgateway
       values: |
@@ -261,8 +252,6 @@ metadata:
   namespace: argocd
   labels:
     infra.platform/git-source: "true"
-  annotations:
-    argocd.argoproj.io/sync-wave: "5"
   finalizers:
     - resources-finalizer.argocd.argoproj.io
 spec:
@@ -298,8 +287,6 @@ metadata:
   namespace: argocd
   labels:
     infra.platform/git-source: "true"
-  annotations:
-    argocd.argoproj.io/sync-wave: "6"
   finalizers:
     - resources-finalizer.argocd.argoproj.io
 spec:
@@ -329,8 +316,6 @@ kind: Application
 metadata:
   name: monitoring
   namespace: argocd
-  annotations:
-    argocd.argoproj.io/sync-wave: "7"
   finalizers:
     - resources-finalizer.argocd.argoproj.io
 spec:
@@ -338,6 +323,7 @@ spec:
   source:
     repoURL: https://prometheus-community.github.io/helm-charts
     chart: kube-prometheus-stack
+    targetRevision: 65.1.0
     helm:
       releaseName: kube-prometheus-stack
       values: |
@@ -401,8 +387,6 @@ metadata:
   namespace: argocd
   labels:
     infra.platform/git-source: "true"
-  annotations:
-    argocd.argoproj.io/sync-wave: "7"
   finalizers:
     - resources-finalizer.argocd.argoproj.io
 spec:
@@ -434,8 +418,6 @@ kind: Application
 metadata:
   name: kyverno
   namespace: argocd
-  annotations:
-    argocd.argoproj.io/sync-wave: "8"
   finalizers:
     - resources-finalizer.argocd.argoproj.io
 spec:
@@ -443,6 +425,7 @@ spec:
   source:
     repoURL: https://kyverno.github.io/kyverno
     chart: kyverno
+    targetRevision: 3.2.6
     helm:
       releaseName: kyverno
   destination:
@@ -468,8 +451,6 @@ metadata:
   namespace: argocd
   labels:
     infra.platform/git-source: "true"
-  annotations:
-    argocd.argoproj.io/sync-wave: "8"  # Same wave as kyverno; dependsOn orders them
   finalizers:
     - resources-finalizer.argocd.argoproj.io
 spec:
@@ -501,8 +482,6 @@ metadata:
   namespace: argocd
   labels:
     infra.platform/git-source: "true"
-  annotations:
-    argocd.argoproj.io/sync-wave: "9"  # Last: needs mesh policies and injection rules
   finalizers:
     - resources-finalizer.argocd.argoproj.io
 spec:

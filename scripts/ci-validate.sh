@@ -74,6 +74,13 @@ validate_scripts() {
   log "All scripts passed bash -n"
 }
 
+validate_gitops_logic() {
+  log "Validating GitOps app-of-apps logic (dependsOn, no Application sync-waves)"
+  for env in staging prod; do
+    "${REPO_ROOT}/scripts/validate-gitops-logic.sh" "${env}"
+  done
+}
+
 validate_gitops() {
   should_run "${RUN_GITOPS}" "gitops/" || { log "Skipping GitOps (no gitops/ changes vs ${CI_BASE_REF:-main})"; return 0; }
   install_kustomize_if_missing
@@ -118,6 +125,7 @@ validate_terraform() {
 main() {
   log "CI validation (Option B) — mirrors GitHub Actions without a cluster"
   validate_scripts
+  validate_gitops_logic
   validate_gitops
   validate_terraform
   log "All checks passed — safe to push and open a PR"

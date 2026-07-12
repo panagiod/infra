@@ -42,9 +42,9 @@ Each environment syncs the same `gitops/platform/` tree; only Terraform (network
 
 ## Platform bundle (install order)
 
-Argo CD sync waves enforce bootstrap order:
+Argo CD **spec.dependsOn** enforces bootstrap order between Applications (all child Application CRs are created when `cluster-root` syncs):
 
-| Wave | Component | Namespace |
+| Order | Component | Namespace |
 |------|-----------|-----------|
 | 0 | cert-manager | cert-manager |
 | 1 | ClusterIssuer + mesh CA | cert-manager |
