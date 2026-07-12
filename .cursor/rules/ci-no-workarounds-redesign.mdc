@@ -1,0 +1,57 @@
+---
+description: Green CI via GitOps-native design — no workarounds; redesign and document when the model is wrong
+alwaysApply: true
+---
+
+# CI green — no workarounds, redesign when needed
+
+When driving CI to green, **do not stack bootstrap hacks** to mask a broken model. If the approach requires repeated `kubectl` patches, `ignoreDifferences`, or CI-only env toggles, **stop and redesign**.
+
+See also: `ci-fix-gitops.mdc`, `ci-until-green.mdc`, `ci-pod-diagnostics.mdc`, `docs/bootstrap.md`.
+
+## Non-negotiables
+
+| Do | Why |
+|----|-----|
+| Fix **GitOps manifests** (`gitops/`), Helm values, and documented bootstrap flow | Source of truth for all environments |
+| **Materialize Applications in dependency order** — one wave at a time in Kind smoke | Prevents gateway/istiod racing ahead of certs and webhooks |
+| Use **fresh kind cluster per CI run** (`RECREATE_CLUSTER=true`) | Avoids stale ReplicaSets and webhook state from failed runs |
+| Let **Istio gateway injection** resolve `image: auto` after istiod is healthy | Chart design; no `kubectl set image` |
+| Configure **istio-csr before istiod** with `caAddress` + `ENABLE_CA_SERVER=false` | cert-manager documented install order |
+| **Document** bootstrap semantics when changing them | `docs/bootstrap.md`, `docs/architecture.md` |
+
+## Workarounds — never ship
+
+| Workaround | Do instead |
+|------------|------------|
+| `kubectl set image` / rollout restart in CI scripts | Wave-order materialization; fix istiod/webhook certs |
+| `ignoreDifferences` to hide drift from script patches | GitOps-correct manifest or ordered install |
+| Materialize **all** Application CRs before wave 1 | `materialize` one Application per wave (`wait-for-app.sh`) |
+| Reuse kind cluster across failed CI runs | Fresh cluster per run in Kind smoke |
+| `CLUSTER_ROOT_AUTOMATED_SYNC=false` + bulk `kubectl apply` | Wave materialization in CI; cluster-root auto-sync in real clusters |
+| Weaken wait/verify without documented upstream reason | Fix root cause (certs, order, chart values) |
+
+## When to redesign (not patch)
+
+Redesign if **any** of these are true:
+
+1. The same CI step fails twice after a “fix” that only touches scripts/workflows.
+2. The fix is not representable in `gitops/` or documented bootstrap.
+3. Production clusters would need the same hack (not CI-only).
+4. You cannot explain the fix in one sentence tied to pod logs or Argo conditions.
+
+Redesign checklist:
+
+1. State the **broken model** (e.g. “all apps sync at step 2”).
+2. Propose **target model** (e.g. “one Application CR per wave”).
+3. Update **docs/bootstrap.md** and validation scripts.
+4. Remove prior workarounds in the same PR.
+5. Run Kind smoke to green on a **fresh** cluster.
+
+## Agent self-check before push
+
+- [ ] No new `kubectl` mutations outside Argo sync / documented one-time cluster bootstrap
+- [ ] No new `ignoreDifferences` without an upstream chart bug link and removal plan
+- [ ] Kind smoke materializes apps **per wave**, not in bulk at step 2
+- [ ] `docs/bootstrap.md` updated if bootstrap semantics changed
+- [ ] I would deploy the same GitOps to staging/prod without CI-only exceptions

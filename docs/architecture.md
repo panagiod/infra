@@ -42,7 +42,7 @@ Each environment syncs the same `gitops/platform/` tree; only Terraform (network
 
 ## Platform bundle (install order)
 
-Bootstrap order is documented here and enforced in **automated PR validation** (Kind smoke dependency waves via `wait-for-app.sh` / `wait-for-apps.sh`) and local bootstrap. All child Application CRs are materialized when `cluster-root` syncs; Argo CD does not use `spec.dependsOn` on Application CRs.
+Bootstrap order is documented here and enforced in **Kind smoke** by wave-by-wave Application materialization (`wait-for-app.sh` / `wait-for-apps.sh`; see [bootstrap.md](bootstrap.md)). On real clusters, **cluster-root** syncs all child Application CRs from Git; Argo CD does not use `spec.dependsOn` on Application CRs.
 
 | Order | Component | Namespace |
 |------|-----------|-----------|

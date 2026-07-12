@@ -205,8 +205,8 @@ spec:
 # -----------------------------------------------------------------------------
 # istio-gateway — Ingress gateway (north-south traffic)
 # -----------------------------------------------------------------------------
-# Deploys the Istio ingress gateway so external clients can reach services in
-# the mesh. LoadBalancer type requests a cloud LB with a public or internal IP.
+# Deploys the Istio ingress gateway after istiod is healthy so the mutating
+# webhook can resolve image: auto via the gateway injection template.
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
@@ -229,13 +229,6 @@ spec:
   destination:
     server: https://kubernetes.default.svc
     namespace: istio-system
-  ignoreDifferences:
-    # Gateway chart renders image: auto; bootstrap sets proxyv2 from istiod after install.
-    - group: apps
-      kind: Deployment
-      name: istio-ingressgateway
-      jsonPointers:
-        - /spec/template/spec/containers/0/image
   syncPolicy:
     automated:
       prune: true

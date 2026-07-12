@@ -7,7 +7,7 @@ alwaysApply: true
 
 Unless the user explicitly opts out (e.g. "don't wait for CI", "status only", "stop fixing CI"), **always drive CI to green** after making or pushing changes.
 
-**Investigation and fix quality:** follow `ci-fix-gitops.mdc` — root-cause analysis first, GitOps-native fixes only, no workarounds. After two failures for the same step/symptom, follow `ci-pod-diagnostics.mdc` and read pod logs before the next fix.
+**Investigation and fix quality:** follow `ci-fix-gitops.mdc` and `ci-no-workarounds-redesign.mdc` — root-cause analysis first, GitOps-native fixes only, redesign when the bootstrap model is wrong. After two failures for the same step/symptom, follow `ci-pod-diagnostics.mdc` and read pod logs before the next fix.
 
 ## Default loop
 
@@ -28,7 +28,7 @@ Unless the user explicitly opts out (e.g. "don't wait for CI", "status only", "s
 - Poll Kind smoke for 90 minutes in one blocking turn without reporting progress
 - Open Codespaces for CI failures (Option B first; Option A only after green if user wants hands-on)
 - Pin versions to make CI pass — fix config per `dependencies.mdc`
-- Apply workarounds to pass checks — see `ci-fix-gitops.mdc`
+- Apply workarounds to pass checks — see `ci-fix-gitops.mdc` and `ci-no-workarounds-redesign.mdc`
 
 ## Commands
 

@@ -11,9 +11,9 @@ RECREATE_CLUSTER="${RECREATE_CLUSTER:-false}"
 DESTROY="${DESTROY:-false}"
 WAIT_TIMEOUT="${WAIT_TIMEOUT:-900}"                   # seconds to wait for core apps
 STRICT_WAIT="${STRICT_WAIT:-false}"                   # exit 1 on wait timeout (CI)
-BOOTSTRAP_PHASE="${BOOTSTRAP_PHASE:-all}"             # all | argocd | cluster-root | wait
-WAIT_APP="${WAIT_APP:-}"                              # single app when BOOTSTRAP_PHASE=wait
-CLUSTER_ROOT_AUTOMATED_SYNC="${CLUSTER_ROOT_AUTOMATED_SYNC:-true}"  # false in Kind smoke (avoids overwriting materialized apps)
+BOOTSTRAP_PHASE="${BOOTSTRAP_PHASE:-all}"             # all | argocd | cluster-root | materialize | wait
+WAIT_APP="${WAIT_APP:-}"                              # single app when BOOTSTRAP_PHASE=materialize|wait
+CLUSTER_ROOT_AUTOMATED_SYNC="${CLUSTER_ROOT_AUTOMATED_SYNC:-true}"  # real clusters: cluster-root syncs children from Git
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 KIND_CONFIG="${REPO_ROOT}/hack/kind/cluster.yaml"
@@ -84,26 +84,32 @@ install_argocd() {
   log "Argo CD ready"
 }
 
-materialize_cluster_applications() {
-  log "Materializing all Application CRs from gitops/clusters/${ENVIRONMENT}"
+materialize_application() {
+  local app="$1"
+  log "Materializing Application CR: ${app} (gitops/clusters/${ENVIRONMENT})"
   local cluster_dir="${REPO_ROOT}/gitops/clusters/${ENVIRONMENT}"
   local build_dir
   build_dir="$(mktemp -d)"
   cp -a "${cluster_dir}/." "${build_dir}/"
-  # Git-sourced Applications read revision from cluster.env; align with GITOPS_REVISION (PR branch in CI).
   sed -i "s|^GITOPS_TARGET_REVISION=.*|GITOPS_TARGET_REVISION=${GITOPS_REVISION}|" "${build_dir}/cluster.env"
   sed -i "s|^GITOPS_REPO_URL=.*|GITOPS_REPO_URL=${GITOPS_REPO_URL}|" "${build_dir}/cluster.env"
-  # Apply manifests directly so Kind smoke wait steps can observe each Application
-  # while bootstrap order is enforced by sequential waits, not Argo CD dependsOn.
-  kustomize build "${build_dir}" | kubectl apply -f -
+  kustomize build "${build_dir}" | python3 - "${app}" <<'PY' | kubectl apply -f -
+import sys, yaml
+
+target = sys.argv[1]
+found = False
+for doc in yaml.safe_load_all(sys.stdin):
+    if doc and doc.get("kind") == "Application" and doc.get("metadata", {}).get("name") == target:
+        yaml.dump(doc, sys.stdout, default_flow_style=False)
+        found = True
+if not found:
+    sys.stderr.write(f"ERROR: Application {target!r} not found in kustomize build\n")
+    sys.exit(1)
+PY
   rm -rf "${build_dir}"
-  kubectl -n argocd get applications -o wide || true
 }
 
 apply_cluster_root() {
-  log "Materializing Application CRs before cluster-root (ensures PR revision + ordering)"
-  materialize_cluster_applications
-
   log "Registering cluster-root Application (gitops/clusters/${ENVIRONMENT})"
   local sync_policy=""
   if [[ "${CLUSTER_ROOT_AUTOMATED_SYNC}" == "true" ]]; then
@@ -115,7 +121,7 @@ apply_cluster_root() {
       - CreateNamespace=true
       - ServerSideApply=true"
   else
-    log "cluster-root automated sync disabled (child Applications managed via materialize + wait steps)"
+    log "cluster-root automated sync disabled"
     sync_policy="  syncPolicy:
     syncOptions:
       - CreateNamespace=true"
@@ -208,22 +214,6 @@ app_is_ready() {
 wait_for_single_app() {
   local app="$1"
   local timeout="${2:-${WAIT_TIMEOUT}}"
-  # Gateway chart uses image: auto; pods materialized before istiod/webhook are ready
-  # keep literal "auto" until recreated. Rollout after istiod wave ensures injection.
-  if [[ "${app}" == "istio-gateway" ]]; then
-    if kubectl -n istio-system get deploy istio-ingressgateway >/dev/null 2>&1; then
-      local pilot_image proxy_image
-      pilot_image="$(kubectl -n istio-system get deploy istiod -o jsonpath='{.spec.template.spec.containers[?(@.name=="discovery")].image}' 2>/dev/null || true)"
-      if [[ -n "${pilot_image}" ]]; then
-        proxy_image="${pilot_image/pilot/proxyv2}"
-        log "Setting istio-ingressgateway proxy image from istiod: ${proxy_image}"
-        kubectl -n istio-system set image deployment/istio-ingressgateway istio-proxy="${proxy_image}"
-      else
-        log "Rolling out istio-ingressgateway (istiod image not found; rely on injector)"
-        kubectl -n istio-system rollout restart deploy/istio-ingressgateway
-      fi
-    fi
-  fi
   log "Waiting for Application: ${app} (timeout ${timeout}s)"
   local deadline=$((SECONDS + timeout))
 
@@ -258,10 +248,11 @@ wait_for_single_app() {
 }
 
 wait_for_apps() {
-  log "Waiting for core Applications (timeout ${WAIT_TIMEOUT}s each)"
-  local apps=(cert-manager platform-ca istiod mtls-demo)
+  log "Waiting for core Applications (timeout ${WAIT_TIMEOUT}s each, materialize per wave)"
+  local apps=(cert-manager platform-ca istio-base istio-csr istiod istio-gateway istio-policies mtls-demo)
   local app
   for app in "${apps[@]}"; do
+    materialize_application "${app}"
     wait_for_single_app "${app}" "${WAIT_TIMEOUT}"
   done
 }
@@ -299,13 +290,19 @@ run_phase() {
       apply_cluster_root
       kubectl -n argocd get applications -o wide 2>/dev/null || true
       ;;
+    materialize)
+      require_cmd kubectl
+      require_cmd kustomize
+      [[ -n "${WAIT_APP}" ]] || die "WAIT_APP is required when BOOTSTRAP_PHASE=materialize"
+      materialize_application "${WAIT_APP}"
+      ;;
     wait)
       require_cmd kubectl
       [[ -n "${WAIT_APP}" ]] || die "WAIT_APP is required when BOOTSTRAP_PHASE=wait"
       wait_for_single_app "${WAIT_APP}" "${WAIT_TIMEOUT}"
       ;;
     *)
-      die "Unknown BOOTSTRAP_PHASE: ${BOOTSTRAP_PHASE} (use all|argocd|cluster-root|wait)"
+      die "Unknown BOOTSTRAP_PHASE: ${BOOTSTRAP_PHASE} (use all|argocd|cluster-root|materialize|wait)"
       ;;
   esac
 }

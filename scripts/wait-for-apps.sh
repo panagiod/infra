@@ -36,6 +36,10 @@ wait_one() {
 
 log "Waiting for Applications in parallel (${#apps[@]}): ${apps[*]} (timeout ${WAIT_TIMEOUT}s each)"
 
+for app in "${apps[@]}"; do
+  BOOTSTRAP_PHASE=materialize WAIT_APP="${app}" "${REPO_ROOT}/scripts/bootstrap-local.sh"
+done
+
 declare -a pids=()
 for app in "${apps[@]}"; do
   wait_one "${app}" &
