@@ -185,27 +185,6 @@ spec:
         pilot:
           env:
             ENABLE_CA_SERVER: "false"
-          extraContainerArgs:
-            - --tlsCertFile=/etc/cert-manager/tls/tls.crt
-            - --tlsKeyFile=/etc/cert-manager/tls/tls.key
-            - --caCertFile=/etc/cert-manager/ca/root-cert.pem
-          volumeMounts:
-            - name: cert-manager
-              mountPath: /etc/cert-manager/tls
-              readOnly: true
-            - name: istio-csr-ca-configmap
-              mountPath: /etc/cert-manager/ca
-              readOnly: true
-          volumes:
-            - name: cert-manager
-              secret:
-                secretName: istiod-tls
-                defaultMode: 420
-            - name: istio-csr-ca-configmap
-              configMap:
-                name: istio-ca-root-cert
-                defaultMode: 420
-                optional: true
         meshConfig:
           enablePrometheusMerge: true  # Merge app and Envoy metrics for Prometheus
           defaultConfig:
