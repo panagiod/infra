@@ -100,6 +100,9 @@ materialize_cluster_applications() {
 }
 
 apply_cluster_root() {
+  log "Materializing Application CRs before cluster-root (ensures PR revision + ordering)"
+  materialize_cluster_applications
+
   log "Registering cluster-root Application (gitops/clusters/${ENVIRONMENT})"
   kubectl apply -f - <<EOF
 apiVersion: argoproj.io/v1alpha1
@@ -126,7 +129,6 @@ spec:
       - CreateNamespace=true
       - ServerSideApply=true
 EOF
-  materialize_cluster_applications
   kubectl -n argocd annotate application cluster-root argocd.argoproj.io/refresh=hard --overwrite >/dev/null 2>&1 || true
 }
 
@@ -150,6 +152,26 @@ app_status_line() {
   fi
 }
 
+app_is_ready() {
+  local app="$1"
+  local sync health phase
+  sync="$(kubectl -n argocd get application "${app}" -o jsonpath='{.status.sync.status}' 2>/dev/null || true)"
+  health="$(kubectl -n argocd get application "${app}" -o jsonpath='{.status.health.status}' 2>/dev/null || true)"
+  phase="$(kubectl -n argocd get application "${app}" -o jsonpath='{.status.operationState.phase}' 2>/dev/null || true)"
+
+  if [[ "${health}" != "Healthy" ]]; then
+    return 1
+  fi
+  if [[ "${sync}" == "Synced" ]]; then
+    return 0
+  fi
+  # Istio and other Helm charts may stay OutOfSync while Healthy (benign live diff).
+  if [[ "${sync}" == "OutOfSync" && "${phase}" == "Succeeded" ]]; then
+    return 0
+  fi
+  return 1
+}
+
 wait_for_single_app() {
   local app="$1"
   local timeout="${2:-${WAIT_TIMEOUT}}"
@@ -158,11 +180,11 @@ wait_for_single_app() {
 
   while (( SECONDS < deadline )); do
     if kubectl -n argocd get application "${app}" >/dev/null 2>&1; then
-      local sync health
-      sync="$(kubectl -n argocd get application "${app}" -o jsonpath='{.status.sync.status}' 2>/dev/null || true)"
-      health="$(kubectl -n argocd get application "${app}" -o jsonpath='{.status.health.status}' 2>/dev/null || true)"
-      if [[ "${sync}" == "Synced" && "${health}" == "Healthy" ]]; then
-        log "${app}: Synced / Healthy"
+      if app_is_ready "${app}"; then
+        local sync health
+        sync="$(kubectl -n argocd get application "${app}" -o jsonpath='{.status.sync.status}' 2>/dev/null || true)"
+        health="$(kubectl -n argocd get application "${app}" -o jsonpath='{.status.health.status}' 2>/dev/null || true)"
+        log "${app}: ready (sync=${sync} health=${health})"
         kubectl -n argocd get application "${app}" -o wide || true
         return 0
       fi
