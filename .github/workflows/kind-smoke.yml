@@ -59,14 +59,14 @@ jobs:
       - name: Platform 1/15 — Install Argo CD
         run: BOOTSTRAP_PHASE=argocd ./scripts/bootstrap-local.sh
 
-      - name: Platform 2/15 — Register cluster-root Application
+      - name: Platform 2/15 — Register cluster-root and materialize Applications
         run: BOOTSTRAP_PHASE=cluster-root ./scripts/bootstrap-local.sh
 
       - name: Platform 3/15 — Wait cert-manager
         run: WAIT_TIMEOUT=600 ./scripts/wait-for-app.sh cert-manager
 
       - name: Platform 4/15 — Wait platform-ca
-        run: WAIT_TIMEOUT=300 ./scripts/wait-for-app.sh platform-ca
+        run: WAIT_TIMEOUT=600 ./scripts/wait-for-app.sh platform-ca
 
       - name: Platform 5/15 — Wait istio-base
         run: WAIT_TIMEOUT=300 ./scripts/wait-for-app.sh istio-base

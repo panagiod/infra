@@ -79,6 +79,15 @@ install_argocd() {
   kubectl -n argocd rollout status deploy/argocd-server --timeout=300s
 }
 
+materialize_cluster_applications() {
+  log "Materializing all Application CRs from gitops/clusters/${ENVIRONMENT}"
+  # dependsOn gates sync timing in Argo CD; it does not always create child Application
+  # CRs until dependencies are healthy. Apply manifests directly so CI wait steps
+  # can observe each app while dependsOn still orders actual sync.
+  kustomize build "${REPO_ROOT}/gitops/clusters/${ENVIRONMENT}" | kubectl apply -f -
+  kubectl -n argocd get applications -o wide || true
+}
+
 apply_cluster_root() {
   log "Registering cluster-root Application (gitops/clusters/${ENVIRONMENT})"
   kubectl apply -f - <<EOF
@@ -106,6 +115,8 @@ spec:
       - CreateNamespace=true
       - ServerSideApply=true
 EOF
+  materialize_cluster_applications
+  kubectl -n argocd annotate application cluster-root argocd.argoproj.io/refresh=hard --overwrite >/dev/null 2>&1 || true
 }
 
 app_status_line() {
