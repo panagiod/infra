@@ -25,6 +25,7 @@ spec:
   source:
     repoURL: https://charts.jetstack.io
     chart: cert-manager
+    targetRevision: v1.17.1
     helm:
       releaseName: cert-manager
       values: |
@@ -32,7 +33,7 @@ spec:
         prometheus:
           enabled: true
           servicemonitor:
-            enabled: true
+            enabled: false  # Prometheus Operator not installed until wave 7
   destination:
     server: https://kubernetes.default.svc
     namespace: cert-manager

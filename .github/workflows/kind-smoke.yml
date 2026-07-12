@@ -50,6 +50,7 @@ jobs:
           GITOPS_REVISION: ${{ github.event.inputs.gitops_revision || github.head_ref || github.ref_name }}
           INSTALL_METALLB: "false"
           WAIT_TIMEOUT: "1200"
+          STRICT_WAIT: "true"
         run: |
           chmod +x scripts/bootstrap-local.sh
           # Cluster already created by kind-action — skip create, install platform shell
@@ -62,13 +63,21 @@ jobs:
           CLUSTER_NAME: infra-local
         run: |
           chmod +x scripts/verify-platform.sh
-          ./scripts/verify-platform.sh || {
-            echo "--- Argo CD applications ---"
-            kubectl -n argocd get applications -o wide || true
-            echo "--- cert-manager pods ---"
-            kubectl -n cert-manager get pods || true
-            exit 1
-          }
+          for attempt in $(seq 1 12); do
+            echo "Verify attempt ${attempt}/12"
+            if ./scripts/verify-platform.sh; then
+              exit 0
+            fi
+            if [[ "${attempt}" -lt 12 ]]; then
+              echo "Platform still syncing — retrying in 60s..."
+              sleep 60
+            fi
+          done
+          echo "--- Argo CD applications ---"
+          kubectl -n argocd get applications -o wide || true
+          echo "--- cert-manager pods ---"
+          kubectl -n cert-manager get pods || true
+          exit 1
 
       - name: Tear down kind cluster
         if: always()

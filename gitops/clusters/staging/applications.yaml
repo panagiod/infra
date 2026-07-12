@@ -27,8 +27,9 @@ metadata:
 spec:
   project: default  # Argo CD project (RBAC / allowed repos); default is permissive
   source:
-    repoURL: https://charts.jetstack.io  # Official cert-manager Helm chart repo
+    repoURL: https://charts.jetstack.io
     chart: cert-manager
+    targetRevision: v1.17.1
     helm:
       releaseName: cert-manager  # Name of the Helm release in the cluster
       values: |
@@ -36,7 +37,7 @@ spec:
         prometheus:
           enabled: true  # Expose metrics for monitoring
           servicemonitor:
-            enabled: true  # Let Prometheus scrape cert-manager automatically
+            enabled: false  # Prometheus Operator not installed until wave 7
   destination:
     server: https://kubernetes.default.svc  # Deploy to the local cluster Argo runs on
     namespace: cert-manager

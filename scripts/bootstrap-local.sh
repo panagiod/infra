@@ -10,6 +10,7 @@ INSTALL_METALLB="${INSTALL_METALLB:-true}"            # LoadBalancer support for
 RECREATE_CLUSTER="${RECREATE_CLUSTER:-false}"
 DESTROY="${DESTROY:-false}"
 WAIT_TIMEOUT="${WAIT_TIMEOUT:-900}"                   # seconds to wait for core apps
+STRICT_WAIT="${STRICT_WAIT:-false}"                   # exit 1 on wait timeout (CI)
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 KIND_CONFIG="${REPO_ROOT}/hack/kind/cluster.yaml"
@@ -70,12 +71,7 @@ install_argocd() {
 
   helm upgrade --install argocd argo/argo-cd \
     --namespace argocd \
-    --set configs.params.server.insecure=true \
-    --set server.service.type=ClusterIP \
-    --set server.ingress.enabled=false \
-    --set applicationSet.enabled=true \
-    --set dex.enabled=false \
-    --set notifications.enabled=false \
+    --values "${REPO_ROOT}/hack/argocd/bootstrap-values.yaml" \
     --wait --timeout 10m
 
   kubectl -n argocd rollout status deploy/argocd-server --timeout=300s
@@ -110,6 +106,26 @@ spec:
 EOF
 }
 
+app_status_line() {
+  local app="$1"
+  if ! kubectl -n argocd get application "${app}" >/dev/null 2>&1; then
+    printf '  %s: not created yet\n' "${app}"
+    return 0
+  fi
+  local sync health msg
+  sync="$(kubectl -n argocd get application "${app}" -o jsonpath='{.status.sync.status}' 2>/dev/null || true)"
+  health="$(kubectl -n argocd get application "${app}" -o jsonpath='{.status.health.status}' 2>/dev/null || true)"
+  msg="$(kubectl -n argocd get application "${app}" -o jsonpath='{.status.conditions[?(@.type=="ComparisonError")].message}' 2>/dev/null || true)"
+  if [[ -z "${msg}" ]]; then
+    msg="$(kubectl -n argocd get application "${app}" -o jsonpath='{.status.operationState.message}' 2>/dev/null | head -c 120 || true)"
+  fi
+  if [[ -n "${msg}" ]]; then
+    printf '  %s: sync=%s health=%s — %s\n' "${app}" "${sync:-pending}" "${health:-pending}" "${msg}"
+  else
+    printf '  %s: sync=%s health=%s\n' "${app}" "${sync:-pending}" "${health:-pending}"
+  fi
+}
+
 wait_for_apps() {
   log "Waiting for core Applications (timeout ${WAIT_TIMEOUT}s)"
   local apps=(cert-manager platform-ca istiod mtls-demo)
@@ -126,14 +142,19 @@ wait_for_apps() {
           log "${app}: Synced / Healthy"
           break
         fi
-        printf '  %s: sync=%s health=%s\n' "${app}" "${sync:-pending}" "${health:-pending}"
+        app_status_line "${app}"
       else
-        printf '  %s: not created yet\n' "${app}"
+        app_status_line "${app}"
       fi
       sleep 15
     done
     if (( SECONDS >= deadline )); then
       warn "Timed out waiting for ${app} — platform may still be syncing"
+      if [[ "${STRICT_WAIT}" == "true" ]]; then
+        log "Argo CD applications (debug)"
+        kubectl -n argocd get applications -o wide || true
+        exit 1
+      fi
       return 0
     fi
   done
