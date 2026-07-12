@@ -10,11 +10,12 @@ Run the full platform in a **cloud dev environment** from your browser. Free tie
 4. In the terminal:
 
 ```bash
-./scripts/bootstrap-local.sh
-LOCAL=true ./scripts/verify-platform.sh
+./scripts/start-lab.sh
 ```
 
-The repo includes `.devcontainer/` with Docker-in-Docker, kubectl, Helm, and kind pre-installed.
+One command bootstraps kind, installs the platform, and runs health checks (~15 min first run).
+
+The repo includes `.devcontainer/` with Docker-in-Docker, kubectl, Helm, Terraform, kind, and GitHub CLI pre-installed.
 
 ## Machine size
 
@@ -87,7 +88,17 @@ Full details: [quota-automation.md](quota-automation.md)
 
 ## No Codespaces quota?
 
-See [getting-started.md](getting-started.md) — **“Contribute without a cluster”** uses GitHub Actions only (PR + CI).
+Use **Option B** — [ci-only.md](ci-only.md): edit on GitHub, open a PR, CI validates with no cluster.
+
+## Option B from this codespace
+
+You can also run CI checks locally before pushing:
+
+```bash
+./scripts/ci-validate.sh
+```
+
+See [ci-only.md](ci-only.md).
 
 ## Alternatives
 

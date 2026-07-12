@@ -46,13 +46,17 @@ flowchart TD
 2. Terminal:
 
 ```bash
-./scripts/bootstrap-local.sh
-LOCAL=true ./scripts/verify-platform.sh
+./scripts/start-lab.sh
 ```
 
 ### B — Contribute (automatic on every PR)
 
-Edit files → open PR → CI runs (kustomize, kind-smoke, etc.). You don't start this — it happens when you open the PR.
+1. Branch from `main` (`feat/`, `fix/`, `docs/`)
+2. Edit `gitops/` or `terraform/` (GitHub web UI or in the codespace)
+3. Optional: `./scripts/ci-validate.sh` before pushing
+4. Open PR → CI runs automatically (kustomize, kind-smoke, terraform validate)
+
+Full walkthrough: [ci-only.md](ci-only.md)
 
 ### Shutdown — save quota (important)
 
@@ -62,7 +66,7 @@ STOP_CODESPACE=true ./scripts/shutdown-lab.sh
 
 **Automatic:** codespace stops after **15 min idle** or **2 h max**; kind cluster is deleted on stop.
 
-Details: [codespaces.md](codespaces.md) · [quota-automation.md](quota-automation.md)
+Details: [codespaces.md](codespaces.md) · [ci-only.md](ci-only.md) · [quota-automation.md](quota-automation.md)
 
 ---
 
@@ -148,16 +152,18 @@ Details: [azure.md](azure.md) · OIDC for PR plans: [github-actions-azure-oidc.m
 
 ## Golden path: contribute without a cluster
 
-You can still improve the repo using CI only:
+**Option B** — no Docker, no Codespaces, no cloud:
 
 1. Branch from `main` (`feat/`, `fix/`, `chore/`, `docs/`)
-2. Edit `gitops/` or `terraform/`
+2. Edit `gitops/` or `terraform/` on github.com or locally
 3. Open a PR — CI runs:
    - `terraform fmt` + `validate`
    - `kustomize build` on GitOps paths
    - **Kind smoke** (ephemeral cluster) on `gitops/**` changes
 
-No cloud credentials required for manifest and Terraform validation.
+Optional pre-push: `./scripts/ci-validate.sh`
+
+**Full guide:** [ci-only.md](ci-only.md)
 
 ---
 

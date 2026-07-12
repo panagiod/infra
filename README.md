@@ -4,11 +4,14 @@ Multi-cloud Kubernetes platform (phase 1): **GitOps-managed** Istio mTLS, cert-m
 
 **New here?** → [docs/getting-started.md](docs/getting-started.md)
 
-**No own computer?** → [docs/codespaces.md](docs/codespaces.md) (free GitHub Codespaces lab)
+**No own computer?** Use **Option A + B** → [docs/getting-started.md#golden-path-a--b-codespaces-lab--ci--recommended](docs/getting-started.md#golden-path-a--b-codespaces-lab--ci--recommended)
+
+- **Option A (lab):** [docs/codespaces.md](docs/codespaces.md) — `./scripts/start-lab.sh`
+- **Option B (CI):** [docs/ci-only.md](docs/ci-only.md) — edit + PR, no cluster
 
 ## Quick start (no cloud cost)
 
-**Codespaces (browser):** Code → Codespaces → Create codespace → `./scripts/bootstrap-local.sh`
+**Codespaces (Option A):** Code → Codespaces → Create codespace → `./scripts/start-lab.sh`
 
 **Local Docker:**
 
@@ -71,9 +74,12 @@ Phase 1 **scaffold** — feature-complete in repo, **not** production-proven unt
 
 ## Contributing
 
+**No cluster needed (Option B):** branch → edit → `./scripts/ci-validate.sh` (optional) → PR. See [docs/ci-only.md](docs/ci-only.md).
+
+**Hands-on lab (Option A):** Codespaces + `./scripts/start-lab.sh`. Shutdown: `STOP_CODESPACE=true ./scripts/shutdown-lab.sh`.
+
 1. Branch from `main` (`feat/`, `fix/`, `chore/`, `docs/`)
 2. Open a PR — CI validates Terraform and GitOps (Kind smoke on `gitops/**` changes)
-3. No cloud needed for manifest-only changes
 
 ## License
 

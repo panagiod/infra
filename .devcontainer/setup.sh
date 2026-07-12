@@ -20,11 +20,11 @@ cat <<'EOF'
 ╔══════════════════════════════════════════════════════════════╗
 ║  infra platform — Codespaces lab ready                       ║
 ╠══════════════════════════════════════════════════════════════╣
-║  Bootstrap (first run ~15 min):                              ║
-║    ./scripts/bootstrap-local.sh                              ║
+║  Start lab (Option A — bootstrap + verify):                    ║
+║    ./scripts/start-lab.sh                                    ║
 ║                                                              ║
-║  Verify:                                                     ║
-║    LOCAL=true ./scripts/verify-platform.sh                   ║
+║  CI checks before push (Option B):                           ║
+║    ./scripts/ci-validate.sh                                  ║
 ║                                                              ║
 ║  Argo CD UI (after bootstrap):                               ║
 ║    kubectl -n argocd port-forward svc/argocd-server 8080:80 ║
@@ -34,7 +34,7 @@ cat <<'EOF'
 ║    STOP_CODESPACE=true ./scripts/shutdown-lab.sh             ║
 ║    Auto: 15 min idle stop · 2 h max open (devcontainer)      ║
 ║                                                              ║
-║  Docs: docs/codespaces.md · docs/quota-automation.md         ║
+║  Docs: docs/codespaces.md · docs/ci-only.md                  ║
 ╚══════════════════════════════════════════════════════════════╝
 
 EOF

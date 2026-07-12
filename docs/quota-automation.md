@@ -82,7 +82,10 @@ GitHub → **Settings** → **Billing** → **Actions** (public repos: usually u
 
 ```bash
 # Start lab (Codespaces terminal)
-./scripts/bootstrap-local.sh
+./scripts/start-lab.sh
+
+# Pre-push CI checks (Option B — no cluster)
+./scripts/ci-validate.sh
 
 # End lab + stop codespace (save quota)
 STOP_CODESPACE=true ./scripts/shutdown-lab.sh
