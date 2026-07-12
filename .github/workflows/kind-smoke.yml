@@ -60,34 +60,37 @@ jobs:
           kubectl -n metallb-system rollout status deploy/controller --timeout=180s
           kubectl apply -f hack/kind/metallb.yaml
 
-      - name: Platform 1/10 — Install Argo CD
+      - name: Platform 1/11 — Install Argo CD
         run: BOOTSTRAP_PHASE=argocd ./scripts/bootstrap-local.sh
 
-      - name: Platform 2/10 — Register cluster-root and materialize Applications
+      - name: Platform 2/11 — Register cluster-root and materialize Applications
         run: BOOTSTRAP_PHASE=cluster-root ./scripts/bootstrap-local.sh
 
-      - name: Platform 3/10 — Wave 1 cert-manager
+      - name: Platform 3/11 — Wave 1 cert-manager
         run: WAIT_TIMEOUT=600 ./scripts/wait-for-app.sh cert-manager
 
-      - name: Platform 4/10 — Wave 2 platform-ca
+      - name: Platform 4/11 — Wave 2 platform-ca
         run: WAIT_TIMEOUT=600 ./scripts/wait-for-app.sh platform-ca
 
-      - name: Platform 5/10 — Wave 3 istio-base
+      - name: Platform 5/11 — Wave 3 istio-base
         run: WAIT_TIMEOUT=300 ./scripts/wait-for-app.sh istio-base
 
-      - name: Platform 6/10 — Wave 4 istiod
+      - name: Platform 6/11 — Wave 4 istiod
         run: WAIT_TIMEOUT=600 ./scripts/wait-for-app.sh istiod
 
-      - name: Platform 7/10 — Wave 5 istio-csr, istio-gateway, istio-policies
-        run: WAIT_TIMEOUT=600 ./scripts/wait-for-apps.sh istio-csr istio-gateway istio-policies
+      - name: Platform 7/11 — Wave 5 istio-csr
+        run: WAIT_TIMEOUT=600 ./scripts/wait-for-app.sh istio-csr
 
-      - name: Platform 8/10 — Wave 6 istio-ingress-tls, monitoring, kyverno
+      - name: Platform 8/11 — Wave 6 istio-gateway, istio-policies
+        run: WAIT_TIMEOUT=600 ./scripts/wait-for-apps.sh istio-gateway istio-policies
+
+      - name: Platform 9/11 — Wave 7 istio-ingress-tls, monitoring, kyverno
         run: WAIT_TIMEOUT=900 ./scripts/wait-for-apps.sh istio-ingress-tls monitoring kyverno
 
-      - name: Platform 9/10 — Wave 7 monitoring-alerts, platform-policies
+      - name: Platform 10/11 — Wave 8 monitoring-alerts, platform-policies
         run: WAIT_TIMEOUT=300 ./scripts/wait-for-apps.sh monitoring-alerts platform-policies
 
-      - name: Platform 10/10 — Wave 8 mtls-demo
+      - name: Platform 11/11 — Wave 9 mtls-demo
         run: WAIT_TIMEOUT=600 ./scripts/wait-for-app.sh mtls-demo
 
       - name: Verify core platform health

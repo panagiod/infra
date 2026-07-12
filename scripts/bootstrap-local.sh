@@ -188,6 +188,10 @@ app_is_ready() {
   if [[ -n "${comparison_err}" ]]; then
     return 1
   fi
+  # Ingress gateway: Argo app health can lag behind Deployment readiness (Service/LB aggregation).
+  if [[ "${sync}" == "Synced" && "${phase}" == "Succeeded" ]] && app_workload_ready "${app}"; then
+    return 0
+  fi
   if [[ "${health}" != "Healthy" ]]; then
     return 1
   fi
@@ -196,10 +200,6 @@ app_is_ready() {
   fi
   # Istio and other Helm charts may stay OutOfSync while Healthy (benign live diff).
   if [[ "${sync}" == "OutOfSync" && "${phase}" == "Succeeded" ]]; then
-    return 0
-  fi
-  # Gateway may stay Progressing in Argo while the Deployment is available (e.g. LB provisioning).
-  if [[ "${sync}" == "Synced" && "${phase}" == "Succeeded" ]] && app_workload_ready "${app}"; then
     return 0
   fi
   return 1
