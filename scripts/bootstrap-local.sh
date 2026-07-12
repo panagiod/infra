@@ -93,7 +93,7 @@ materialize_application() {
   cp -a "${cluster_dir}/." "${build_dir}/"
   sed -i "s|^GITOPS_TARGET_REVISION=.*|GITOPS_TARGET_REVISION=${GITOPS_REVISION}|" "${build_dir}/cluster.env"
   sed -i "s|^GITOPS_REPO_URL=.*|GITOPS_REPO_URL=${GITOPS_REPO_URL}|" "${build_dir}/cluster.env"
-  kustomize build "${build_dir}" | python3 - "${app}" <<'PY' | kubectl apply -f -
+  kustomize build "${build_dir}" | python3 -c '
 import sys, yaml
 
 target = sys.argv[1]
@@ -105,7 +105,7 @@ for doc in yaml.safe_load_all(sys.stdin):
 if not found:
     sys.stderr.write(f"ERROR: Application {target!r} not found in kustomize build\n")
     sys.exit(1)
-PY
+' "${app}" | kubectl apply -f -
   rm -rf "${build_dir}"
 }
 
