@@ -57,6 +57,7 @@ flowchart LR
 | Gate | Workflow | What it proves |
 |------|----------|----------------|
 | Fast preflight | `gitops.yml` | Kustomize, install order, images, kubeconform |
+| KubeShip sanity | `kubeship.yml` | API lifecycle, UI routes, validation (mock Couchbase) |
 | Terraform | `terraform.yml` | fmt + validate |
 | Full platform | `kind-smoke.yml` | Ephemeral cluster boots full stack including KubeShip |
 

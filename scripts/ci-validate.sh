@@ -121,6 +121,18 @@ validate_gitops() {
   done
 }
 
+validate_kubeship() {
+  should_run "${RUN_KUBESHIP:-auto}" "apps/kubeship/" || { log "Skipping KubeShip tests (no apps/kubeship/ changes vs ${CI_BASE_REF:-main})"; return 0; }
+  require_cmd python3
+  log "KubeShip sanity tests"
+  (
+    cd "${REPO_ROOT}/apps/kubeship"
+    python3 -m pip install --quiet -r requirements-dev.txt
+    python3 -m pytest -q
+    python3 -m py_compile src/main.py
+  )
+}
+
 validate_terraform() {
   should_run "${RUN_TERRAFORM}" "terraform/" || { log "Skipping Terraform (no terraform/ changes vs ${CI_BASE_REF:-main})"; return 0; }
   install_terraform_if_missing
@@ -146,6 +158,7 @@ main() {
   validate_gitops_logic
   validate_gitops
   validate_preflight
+  validate_kubeship
   validate_terraform
   log "All checks passed — safe to push and open a PR"
   printf '\nNext: git push origin <branch> → open PR → CI runs automatically\n'

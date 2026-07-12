@@ -34,6 +34,18 @@ kubectl -n kubeship port-forward svc/kubeship-api 8080:8080
 
 The console supports creating shipments, tracking by code, viewing status history, and updating status.
 
+## Sanity tests
+
+API and UI smoke tests run in CI without Couchbase (in-memory mock):
+
+```bash
+cd apps/kubeship
+pip install -r requirements-dev.txt
+python3 -m pytest -q
+```
+
+Covers health, carriers, create → get → track → status update, validation errors, and static UI assets.
+
 ## Install order
 
 ```text

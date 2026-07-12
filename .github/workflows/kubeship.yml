@@ -1,0 +1,39 @@
+# KubeShip product sanity tests (no cluster required).
+name: KubeShip tests
+
+on:
+  pull_request:
+    paths:
+      - 'apps/kubeship/**'
+      - '.github/workflows/kubeship.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'apps/kubeship/**'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  sanity:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/kubeship
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install dependencies
+        run: |
+          pip install --quiet -r requirements-dev.txt
+
+      - name: Run sanity tests
+        run: python3 -m pytest -q
+
+      - name: Syntax check
+        run: python3 -m py_compile src/main.py
