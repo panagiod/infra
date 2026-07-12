@@ -468,3 +468,31 @@ spec:
       selfHeal: true
     syncOptions:
       - CreateNamespace=true
+---
+# -----------------------------------------------------------------------------
+# myapp — Application workload (production overlay)
+# -----------------------------------------------------------------------------
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: myapp
+  namespace: argocd
+  labels:
+    infra.platform/git-source: "true"
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/panagiod/infra
+    targetRevision: main
+    path: gitops/apps/myapp/overlays/prod
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: myapp
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true

@@ -481,3 +481,34 @@ spec:
       selfHeal: true
     syncOptions:
       - CreateNamespace=true
+---
+# -----------------------------------------------------------------------------
+# myapp — Application workload (code in panagiod/myapp; deploy via infra GitOps)
+# -----------------------------------------------------------------------------
+# Deploy manifests live here until the app repo deploy/ overlay is corrected and
+# published to GHCR. Swap the Deployment image to ghcr.io/panagiod/myapp:<tag>
+# after the app repo release workflow runs.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: myapp
+  namespace: argocd
+  labels:
+    infra.platform/git-source: "true"
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/panagiod/infra
+    targetRevision: main
+    path: gitops/apps/myapp/overlays/staging
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: myapp
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true

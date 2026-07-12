@@ -90,15 +90,14 @@ Commit and push to `main`.
 
 ## Step 4 — Register with Argo CD (infra repo)
 
-When an image exists and staging overlays point at it:
+**Current setup:** deploy manifests for `myapp` live in **infra** at `gitops/apps/myapp/`. Application **source code** stays in `panagiod/myapp`. The Argo CD `Application` CR is in `gitops/clusters/*/applications.yaml` (after `mtls-demo`).
 
-1. Copy [`gitops/clusters/staging/application-myapp.yaml.example`](../gitops/clusters/staging/application-myapp.yaml.example).
-2. Uncomment and adjust the Application CR.
-3. Append it to `gitops/clusters/staging/applications.yaml` **after** `platform-policies` (or after `mtls-demo` while the demo is still installed).
-4. Add the same name to `scripts/gitops-install-order.sh` for Kind smoke.
-5. Open a PR in **infra** — Kind smoke will materialize the new Application in the final wave.
+When a GHCR image is published from the app repo:
 
-Prod follows the same pattern with `deploy/overlays/prod` and `gitops/clusters/prod/applications.yaml`.
+1. Update `gitops/apps/myapp/base/app.yaml` image to `ghcr.io/panagiod/myapp:<tag>`.
+2. Open a PR in **infra** — Kind smoke materializes `myapp` in the final wave.
+
+**Later (optional):** move `deploy/` to the app repo and point `spec.source.repoURL` at `https://github.com/panagiod/myapp`.
 
 ## Step 5 — Backing services (later)
 

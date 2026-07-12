@@ -14,4 +14,5 @@ GITOPS_INSTALL_ORDER=(
   kyverno
   platform-policies
   mtls-demo
+  myapp
 )

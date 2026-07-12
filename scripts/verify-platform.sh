@@ -97,6 +97,7 @@ check_platform_apps() {
     monitoring
     monitoring-alerts
     mtls-demo
+    myapp
   )
   for app in "${apps[@]}"; do
     if ! kubectl -n "${NAMESPACE_ARGOCD}" get application "${app}" >/dev/null 2>&1; then
@@ -122,6 +123,7 @@ check_workloads() {
     "istio-system:app=istio-ingressgateway"
     "mtls-demo:app=frontend"
     "mtls-demo:app=backend"
+    "myapp:app=myapp"
   )
   for entry in "${checks[@]}"; do
     local ns selector

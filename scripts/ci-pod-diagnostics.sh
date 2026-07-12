@@ -87,7 +87,7 @@ main() {
     istio-gateway)
       dump_workload istio-system deploy istio-ingressgateway
       ;;
-    istio-base|istio-policies|istio-ingress-tls|monitoring|monitoring-alerts|kyverno|platform-policies|mtls-demo)
+    istio-base|istio-policies|istio-ingress-tls|monitoring|monitoring-alerts|kyverno|platform-policies|mtls-demo|myapp)
       ;;
   esac
 
