@@ -30,6 +30,10 @@ Kind smoke must **not** register all child Applications at once. That caused:
 
 Materialization reads the same `gitops/clusters/<env>/applications.yaml` as production — no duplicate manifests.
 
+**Fast preflight (GitOps workflow / `ci-preflight-gitops.sh`):** namespace wave order, image registry checks, kubeconform on rendered manifests — before Kind smoke creates a cluster.
+
+**In-cluster fail-fast:** `FAIL_FAST=true` (Kind smoke default) exits wait loops on `ImagePullBackOff`, `CrashLoopBackOff`, or permanent Argo sync errors (`not found`) instead of waiting the full wave timeout.
+
 ```text
 Wave 1: materialize cert-manager     → wait
 Wave 2: materialize platform-ca      → wait

@@ -57,7 +57,18 @@ Repeat edits on the same branch; each push re-runs CI.
 
 **Kind smoke is the slowest** — it only runs when GitOps-related files change. Docs-only PRs skip it.
 
-Kind smoke starts with **`scripts/ci-check-images.sh`**: it renders the same Helm/kustomize manifests as the bootstrap, then uses `crane manifest` to confirm every image exists **before** creating a kind cluster (~15s vs ~10+ minutes wasted on `ImagePullBackOff`).
+Kind smoke starts with **`scripts/ci-check-images.sh`** (also in the GitOps workflow via **`scripts/ci-preflight-gitops.sh`**) before creating a kind cluster.
+
+**GitOps workflow preflight** (~1–2 min, parallel to Terraform):
+
+| Check | Script | Catches |
+|-------|--------|---------|
+| Install order / Helm rules | `validate-gitops-logic.sh` | Wrong app order, sync-waves, pins |
+| Namespace wave order | `validate-wave-namespaces.sh` | Policies referencing namespaces not created yet |
+| Image registry | `ci-check-images.sh` | Missing image tags (`ImagePullBackOff`) |
+| Core K8s schemas | `ci-kubeconform.sh` | Invalid Deployment/Service fields on core kinds |
+
+Kind smoke also uses **`FAIL_FAST=true`** in wait loops: terminal pod states (`ImagePullBackOff`, etc.) and permanent Argo sync errors (`not found`) exit within one poll instead of waiting the full 600s timeout.
 
 Plan workflows are **optional** until you configure OIDC — `terraform validate` still runs without cloud access.
 
@@ -76,10 +87,16 @@ Only checks what changed vs `main` by default:
 
 ```bash
 # Force all checks
-RUN_TERRAFORM=true RUN_GITOPS=true RUN_IMAGES=true ./scripts/ci-validate.sh
+RUN_TERRAFORM=true RUN_GITOPS=true RUN_PREFLIGHT=true ./scripts/ci-validate.sh
 ```
 
-Image preflight alone (when changing container images in GitOps):
+Full GitOps preflight (render once, all fast checks):
+
+```bash
+./scripts/ci-preflight-gitops.sh
+```
+
+Image preflight alone:
 
 ```bash
 ./scripts/ci-check-images.sh

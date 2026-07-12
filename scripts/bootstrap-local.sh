@@ -11,6 +11,7 @@ RECREATE_CLUSTER="${RECREATE_CLUSTER:-false}"
 DESTROY="${DESTROY:-false}"
 WAIT_TIMEOUT="${WAIT_TIMEOUT:-900}"                   # seconds to wait for core apps
 STRICT_WAIT="${STRICT_WAIT:-false}"                   # exit 1 on wait timeout (CI)
+FAIL_FAST="${FAIL_FAST:-true}"                        # exit early on terminal pod/sync errors (CI)
 BOOTSTRAP_PHASE="${BOOTSTRAP_PHASE:-all}"             # all | argocd | cluster-root | materialize | wait
 WAIT_APP="${WAIT_APP:-}"                              # single app when BOOTSTRAP_PHASE=materialize|wait
 CLUSTER_ROOT_AUTOMATED_SYNC="${CLUSTER_ROOT_AUTOMATED_SYNC:-true}"  # real clusters: cluster-root syncs children from Git
@@ -217,6 +218,89 @@ app_is_ready() {
   return 1
 }
 
+app_destination_namespace() {
+  local app="$1"
+  kubectl -n argocd get application "${app}" -o jsonpath='{.spec.destination.namespace}' 2>/dev/null || true
+}
+
+app_terminal_pod_failures() {
+  local app="$1"
+  local ns
+  ns="$(app_destination_namespace "${app}")"
+  [[ -n "${ns}" ]] || return 0
+  kubectl get namespace "${ns}" >/dev/null 2>&1 || return 0
+
+  kubectl get pods -n "${ns}" -o json 2>/dev/null | python3 -c "
+import json, sys
+terminal = {
+    'ImagePullBackOff', 'ErrImagePull', 'CrashLoopBackOff',
+    'CreateContainerConfigError', 'InvalidImageName',
+}
+data = json.load(sys.stdin)
+lines = []
+for pod in data.get('items', []):
+    name = pod['metadata']['name']
+    for label, statuses in (('container', pod.get('status', {}).get('containerStatuses')),
+                            ('init', pod.get('status', {}).get('initContainerStatuses'))):
+        for cs in statuses or []:
+            waiting = (cs.get('state') or {}).get('waiting') or {}
+            reason = waiting.get('reason')
+            if reason in terminal:
+                msg = waiting.get('message', '')[:160]
+                cname = cs.get('name', '?')
+                prefix = f'{name}/{cname}'
+                if label == 'init':
+                    prefix += ' (init)'
+                lines.append(f'{prefix}: {reason} — {msg}')
+if lines:
+    print('\n'.join(lines))
+" 2>/dev/null || true
+}
+
+app_permanent_sync_error() {
+  local app="$1"
+  local phase msg
+  phase="$(kubectl -n argocd get application "${app}" -o jsonpath='{.status.operationState.phase}' 2>/dev/null || true)"
+  msg="$(kubectl -n argocd get application "${app}" -o jsonpath='{.status.operationState.message}' 2>/dev/null || true)"
+
+  if [[ "${phase}" == "Failed" && -n "${msg}" ]]; then
+    printf '%s\n' "${msg}"
+    return 0
+  fi
+  if [[ "${msg}" == *'not found'* ]]; then
+    printf '%s\n' "${msg}"
+    return 0
+  fi
+  return 1
+}
+
+fail_fast_if_broken() {
+  local app="$1"
+  [[ "${FAIL_FAST}" == "true" ]] || return 0
+
+  local pod_issues sync_err
+  pod_issues="$(app_terminal_pod_failures "${app}")"
+  if [[ -n "${pod_issues}" ]]; then
+    warn "Terminal pod failure for ${app} — failing fast (FAIL_FAST=true)"
+    printf '%s\n' "${pod_issues}" >&2
+    if [[ "${CI_POD_DIAGNOSTICS:-false}" == "true" ]]; then
+      "${REPO_ROOT}/scripts/ci-pod-diagnostics.sh" "${app}" || true
+    fi
+    [[ "${STRICT_WAIT}" == "true" ]] && exit 1
+    return 0
+  fi
+
+  sync_err="$(app_permanent_sync_error "${app}" || true)"
+  if [[ -n "${sync_err}" ]]; then
+    warn "Permanent Argo CD sync error for ${app} — failing fast (FAIL_FAST=true)"
+    printf '%s\n' "${sync_err}" >&2
+    if [[ "${CI_POD_DIAGNOSTICS:-false}" == "true" ]]; then
+      "${REPO_ROOT}/scripts/ci-pod-diagnostics.sh" "${app}" || true
+    fi
+    [[ "${STRICT_WAIT}" == "true" ]] && exit 1
+  fi
+}
+
 wait_for_single_app() {
   local app="$1"
   local timeout="${2:-${WAIT_TIMEOUT}}"
@@ -234,6 +318,7 @@ wait_for_single_app() {
         return 0
       fi
       app_status_line "${app}"
+      fail_fast_if_broken "${app}"
     else
       app_status_line "${app}"
     fi

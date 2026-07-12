@@ -4,6 +4,11 @@ on:
   pull_request:
     paths:
       - 'gitops/**'
+      - 'hack/argocd/**'
+      - 'scripts/ci-*.sh'
+      - 'scripts/ci_*.py'
+      - 'scripts/validate-*.sh'
+      - 'scripts/gitops-install-order.sh'
       - '.github/workflows/gitops.yml'
   push:
     branches:
@@ -19,11 +24,12 @@ concurrency:
 jobs:
   kustomize-build:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
 
-      # Fetch the latest kustomize release tag and install it (no hardcoded version)
+      - uses: azure/setup-helm@v4
+
       - name: Install latest kustomize
         run: |
           KUSTOMIZE_VERSION=$(curl -fsSL https://api.github.com/repos/kubernetes-sigs/kustomize/releases/latest \
@@ -32,7 +38,21 @@ jobs:
           sudo install kustomize /usr/local/bin/kustomize
           kustomize version
 
-      # Render manifests to catch YAML/Kustomize errors before merge
+      - name: Install PyYAML
+        run: pip install --quiet pyyaml
+
+      - name: Prepare validation scripts
+        run: |
+          chmod +x scripts/*.sh scripts/ci_render_gitops.py
+
+      - name: GitOps logic (install order, no sync-waves)
+        run: |
+          ./scripts/validate-gitops-logic.sh staging
+          ./scripts/validate-gitops-logic.sh prod
+
+      - name: Preflight — namespaces, images, kubeconform
+        run: ./scripts/ci-preflight-gitops.sh
+
       - name: Build staging cluster apps
         run: kustomize build gitops/clusters/staging
 

@@ -6,12 +6,9 @@ REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 ENV="${1:-staging}"
 APPS_FILE="${REPO_ROOT}/gitops/clusters/${ENV}/applications.yaml"
 
-# Expected bootstrap order — enforced by Kind smoke wait steps, not Argo CD dependsOn.
-EXPECTED_ORDER=(
-  cert-manager platform-ca istio-base istio-csr istiod istio-gateway
-  istio-ingress-tls istio-policies monitoring monitoring-alerts
-  kyverno platform-policies mtls-demo
-)
+# shellcheck source=scripts/gitops-install-order.sh
+source "${REPO_ROOT}/scripts/gitops-install-order.sh"
+EXPECTED_ORDER=("${GITOPS_INSTALL_ORDER[@]}")
 
 log() { printf '==> %s\n' "$*"; }
 die() { printf 'ERROR: %s\n' "$*" >&2; exit 1; }

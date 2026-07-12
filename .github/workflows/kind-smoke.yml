@@ -8,6 +8,12 @@ on:
       - 'hack/kind/**'
       - 'hack/argocd/**'
       - 'scripts/ci-check-images.sh'
+      - 'scripts/ci-kubeconform.sh'
+      - 'scripts/ci-preflight-gitops.sh'
+      - 'scripts/ci_render_gitops.py'
+      - 'scripts/ci-install-tools.sh'
+      - 'scripts/validate-wave-namespaces.sh'
+      - 'scripts/gitops-install-order.sh'
       - 'scripts/bootstrap-local.sh'
       - 'scripts/ci-pod-diagnostics.sh'
       - 'scripts/wait-for-app.sh'
@@ -39,6 +45,7 @@ jobs:
       INSTALL_METALLB: "false"
       RECREATE_CLUSTER: "true"
       STRICT_WAIT: "true"
+      FAIL_FAST: "true"
       CI_POD_DIAGNOSTICS: "true"
     steps:
       - uses: actions/checkout@v4
