@@ -1,0 +1,69 @@
+---
+description: When fixing CI — investigate root cause first; GitOps-native fixes only, no workarounds
+alwaysApply: true
+---
+
+# CI fixes — investigate first, GitOps-native only
+
+When driving CI to green (see `ci-until-green.mdc`), **never patch symptoms to pass a check**. Every fix must be something we would ship to staging/prod GitOps, not a one-off for Actions.
+
+See also: `dependencies.mdc`, `git-workflow.mdc`, `docs/architecture.md`.
+
+## Investigate before changing anything
+
+Before editing code, complete this checklist:
+
+1. **Read the failed step name** — Kind smoke waves name the failing Application or phase.
+2. **Read full failure logs** — `gh run view <id> --log-failed` (or the failed step log in the UI). Find the first error, not the timeout message.
+3. **Identify the layer** — GitOps manifest, Helm values, Argo CD Application spec, bootstrap script, workflow env, or upstream chart/API change.
+4. **Confirm expected vs actual** — What should Argo sync? What revision, chart version, and health/sync status did the run show?
+5. **Reproduce cheaply** — `./scripts/ci-validate.sh` for manifest/logic; local kind only when cluster behavior is required.
+6. **State the root cause in one sentence** — If you cannot, keep investigating; do not guess.
+
+Do **not** push a fix based only on “it timed out” or “status was Unknown” without reading `ComparisonError`, Helm template errors, or controller messages.
+
+## GitOps best practices (required for CI fixes)
+
+| Do | Why |
+|----|-----|
+| Fix **Application manifests**, overlays, and Helm `values` under `gitops/` | Source of truth for all environments |
+| Keep bootstrap **declarative** — materialize from `kustomize build`, register `cluster-root` intentionally | Matches how clusters are actually managed |
+| Enforce **install order** via documented dependency waves (`wait-for-app.sh` / `wait-for-apps.sh`) or manifest structure | We do not rely on unsupported Argo fields |
+| Use `targetRevision: '*'` for third-party Helm (per `dependencies.mdc`) | Latest stable without semver pins |
+| Align **git revision** for PR validation (`GITOPS_REVISION` → `cluster.env` replacements) | CI must test the branch under review |
+| Update **validation** (`validate-gitops-logic.sh`) when order or invariants change | Prevents regressions before Kind smoke |
+| Document behavior in `docs/architecture.md` when bootstrap semantics change | Keeps humans and agents aligned |
+
+## Workarounds — do not use
+
+These may make CI green temporarily but **violate GitOps** or hide real breakage. Fix the underlying issue instead.
+
+| Workaround | Do instead |
+|------------|------------|
+| Pin Helm/Terraform/Argo versions to pass CI | Fix values/schema for latest stable (`dependencies.mdc`) |
+| `kubectl apply` ad-hoc YAML in CI that is not in `gitops/` | Add or fix manifests in repo; let Argo sync |
+| Disable health/sync checks or accept any status to exit 0 | Fix why the Application is not Healthy/Synced (chart values, CRDs, order, resources) |
+| Skip waiting for an app or an entire wave | Fix dependency order or app config; adjust wave only if graph is correct |
+| `CLUSTER_ROOT_AUTOMATED_SYNC=false` (or similar) **without** understanding revision drift | Ensure materialized Apps match PR revision; document why cluster-root sync policy differs in smoke vs prod |
+| Application `sync-wave` or `dependsOn` to force order | Use wave waits; fix manifest order in `applications.yaml` |
+| Loosen `app_is_ready` / verify scripts without a documented Argo/Helm reason | Add `ignoreDifferences`, fix chart values, or fix workload readiness (e.g. Service type on kind) |
+| Retry loops that mask persistent `ComparisonError` | Fix manifest generation (invalid Helm values, missing fields) |
+| CI-only env hacks not reflected in GitOps or docs | Encode the real policy in repo or bootstrap with a clear comment |
+
+If a **temporary** CI-only toggle is unavoidable (e.g. smoke vs prod difference), it must be: (1) named and documented, (2) justified in the PR/commit, (3) paired with a GitOps-correct default for real clusters.
+
+## Fix workflow (with investigation)
+
+1. Root cause statement (from logs + manifest review)
+2. Minimal GitOps-native change under `gitops/`, `hack/`, or `scripts/` — match existing patterns
+3. `./scripts/ci-validate.sh`
+4. Push → watch Kind smoke → on failure, **new** root-cause analysis (do not stack workarounds)
+5. PR description explains **why** the failure happened, not only what changed
+
+## Agent self-check before push
+
+- [ ] I read `--log-failed` (or equivalent) for this failure
+- [ ] The fix lives in GitOps/bootstrap/docs, not only in workflow conditionals
+- [ ] I am not pinning a third-party version to silence an error
+- [ ] I am not weakening a wait/verify check without a documented upstream reason
+- [ ] Staging and prod `applications.yaml` stay in sync unless the bug is env-specific
