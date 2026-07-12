@@ -1,0 +1,38 @@
+---
+description: Default — fix CI until green after code changes unless user opts out
+alwaysApply: true
+---
+
+# CI until green (default)
+
+Unless the user explicitly opts out (e.g. "don't wait for CI", "status only", "stop fixing CI"), **always drive CI to green** after making or pushing changes.
+
+## Default loop
+
+1. Run fast local checks: `./scripts/ci-validate.sh`
+2. Push if there are unpushed commits
+3. Check PR / Kind smoke status: `./scripts/from-here.sh status` or `fix-ci`
+4. On failure: read `gh run view <id> --log-failed`, patch root cause, push, repeat
+5. When green: report success; merge only if user asked to merge
+
+## Opt-out phrases (do not fix loop)
+
+- "status only" / "just status"
+- "don't wait for CI" / "skip CI"
+- "stop fixing" / "don't merge"
+
+## Do not
+
+- Poll Kind smoke for 90 minutes in one blocking turn without reporting progress
+- Open Codespaces for CI failures (Option B first; Option A only after green if user wants hands-on)
+- Pin versions to make CI pass — fix config per `dependencies.mdc`
+
+## Commands
+
+```bash
+./scripts/from-here.sh check local
+./scripts/from-here.sh fix-ci
+./scripts/from-here.sh monitor    # when user wants to wait for completion
+```
+
+See `docs/cloud-agent.md`.

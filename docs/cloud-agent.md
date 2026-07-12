@@ -2,6 +2,8 @@
 
 Run the whole project **through the agent** — you describe what you want; the agent runs commands in this environment.
 
+**Default:** after changes, the agent **fixes CI until green** unless you say otherwise (see `.cursor/rules/ci-until-green.mdc`).
+
 No own machine, no Codespaces tab, no manual `gh` clicks required.
 
 ## What works from here
