@@ -66,21 +66,30 @@ install_metallb() {
 }
 
 install_argocd() {
-  log "Installing Argo CD"
+  log "Installing Argo CD (v2.14+ required for spec.dependsOn)"
   kubectl create namespace argocd --dry-run=client -o yaml | kubectl apply -f -
   helm repo add argo https://argoproj.github.io/argo-helm >/dev/null 2>&1 || true
   helm repo update argo
 
+  local chart_version="${ARGO_CD_CHART_VERSION:-7.7.18}"
   helm upgrade --install argocd argo/argo-cd \
     --namespace argocd \
+    --version "${chart_version}" \
     --values "${REPO_ROOT}/hack/argocd/bootstrap-values.yaml" \
     --wait --timeout 10m
 
   kubectl -n argocd rollout status deploy/argocd-server --timeout=300s
+  if ! kubectl explain application.spec.dependsOn >/dev/null 2>&1; then
+    die "Argo CD CRD missing spec.dependsOn — upgrade Argo CD to v2.14+"
+  fi
+  log "Argo CD ready (dependsOn supported)"
 }
 
 materialize_cluster_applications() {
   log "Materializing all Application CRs from gitops/clusters/${ENVIRONMENT}"
+  if ! kubectl explain application.spec.dependsOn >/dev/null 2>&1; then
+    die "Cannot materialize apps: Argo CD Application CRD does not support spec.dependsOn"
+  fi
   # dependsOn gates sync timing in Argo CD; it does not always create child Application
   # CRs until dependencies are healthy. Apply manifests directly so CI wait steps
   # can observe each app while dependsOn still orders actual sync.

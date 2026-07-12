@@ -1,4 +1,8 @@
-# Argo CD values for local/kind bootstrap — app-of-apps sync waves need Application health.
+# Argo CD values for local/kind bootstrap — requires v2.14+ for Application spec.dependsOn.
+global:
+  image:
+    tag: v2.14.20
+
 configs:
   params:
     server.insecure: true

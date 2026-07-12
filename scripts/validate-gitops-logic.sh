@@ -72,6 +72,8 @@ if errors:
         print(f'  - {e}')
     sys.exit(1)
 
+print('NOTE: requires Argo CD v2.14+ (Application spec.dependsOn)')
+
 print(f'OK: {len(apps)} Applications, no sync-waves on Application CRs')
 print('Install order (dependsOn topological sort):')
 for i, n in enumerate(order, 1):
