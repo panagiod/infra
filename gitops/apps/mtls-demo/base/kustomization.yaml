@@ -5,3 +5,4 @@ kind: Kustomization
 
 resources:
   - app.yaml  # Namespace, Deployments, Services, and AuthorizationPolicy
+  - peer-authentication.yaml  # STRICT mTLS for this namespace (syncs with namespace)

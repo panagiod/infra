@@ -9,9 +9,15 @@
       "kubectl": "latest",
       "helm": "latest",
       "minikube": "none"
+    },
+    "ghcr.io/devcontainers/features/github-cli:1": {},
+    "ghcr.io/devcontainers/features/terraform:1": {
+      "version": "latest"
     }
   },
   "postCreateCommand": "bash .devcontainer/setup.sh",
+  "postAttachCommand": "bash .devcontainer/welcome.sh",
+  "postStopCommand": "bash .devcontainer/stop-cleanup.sh",
   "hostRequirements": {
     "cpus": 4,
     "memory": "8gb",
@@ -23,6 +29,10 @@
         "ms-kubernetes-tools.vscode-kubernetes-tools",
         "redhat.vscode-yaml"
       ]
+    },
+    "codespaces": {
+      "idleTimeout": 15,
+      "openDuration": 120
     }
   },
   "forwardPorts": [8080, 3000, 8443],

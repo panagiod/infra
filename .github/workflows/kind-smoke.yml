@@ -6,54 +6,192 @@ on:
     paths:
       - 'gitops/**'
       - 'hack/kind/**'
+      - 'hack/argocd/**'
+      - 'scripts/ci-check-images.sh'
+      - 'scripts/ci-kubeconform.sh'
+      - 'scripts/ci-preflight-gitops.sh'
+      - 'scripts/ci_render_gitops.py'
+      - 'scripts/ci-install-tools.sh'
+      - 'scripts/validate-wave-namespaces.sh'
+      - 'scripts/gitops-install-order.sh'
       - 'scripts/bootstrap-local.sh'
+      - 'scripts/ci-pod-diagnostics.sh'
+      - 'scripts/wait-for-app.sh'
+      - 'scripts/wait-for-apps.sh'
       - 'scripts/verify-platform.sh'
+      - 'scripts/from-here.sh'
+      - 'scripts/monitor-ci.sh'
+      - 'docs/bootstrap.md'
       - '.github/workflows/kind-smoke.yml'
+  workflow_dispatch:
+    inputs:
+      gitops_revision:
+        description: 'Branch or tag to bootstrap (default: branch that triggered the run)'
+        required: false
+
+# Cancel an in-progress run when the same PR gets a new push (saves Actions minutes)
+concurrency:
+  group: kind-smoke-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 
 jobs:
   smoke:
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 90
+    env:
+      GITOPS_REPO_URL: https://github.com/${{ github.repository }}
+      GITOPS_REVISION: ${{ github.event.inputs.gitops_revision || github.head_ref || github.ref_name }}
+      CLUSTER_NAME: infra-local
+      INSTALL_METALLB: "false"
+      RECREATE_CLUSTER: "true"
+      STRICT_WAIT: "true"
+      FAIL_FAST: "true"
+      CI_POD_DIAGNOSTICS: "true"
     steps:
       - uses: actions/checkout@v4
-
-      - uses: helm/kind-action@v1
         with:
-          cluster_name: infra-local
-          config: hack/kind/cluster.yaml
+          ref: ${{ github.event.inputs.gitops_revision || github.head_ref || github.ref }}
 
       - uses: azure/setup-kubectl@v4
 
       - uses: azure/setup-helm@v4
 
+      - name: Verify container images are pullable (preflight)
+        run: chmod +x scripts/ci-check-images.sh && ./scripts/ci-check-images.sh
+
+      - name: Install kind
+        run: |
+          KIND_VERSION="$(curl -fsSL https://api.github.com/repos/kubernetes-sigs/kind/releases/latest | grep '"tag_name"' | head -1 | sed -E 's/.*"v([^"]+)".*/\1/')"
+          curl -fsSL "https://kind.sigs.k8s.io/dl/v${KIND_VERSION}/kind-linux-amd64" -o /tmp/kind
+          chmod +x /tmp/kind
+          sudo mv /tmp/kind /usr/local/bin/kind
+          kind version
+
+      - name: Create or reuse kind cluster
+        run: |
+          if kind get clusters 2>/dev/null | grep -qx "${CLUSTER_NAME}"; then
+            echo "Reusing existing kind cluster ${CLUSTER_NAME} (skip create — faster reruns)"
+            kubectl config use-context "kind-${CLUSTER_NAME}"
+          else
+            kind create cluster --name "${CLUSTER_NAME}" --config hack/kind/cluster.yaml
+            kubectl config use-context "kind-${CLUSTER_NAME}"
+          fi
+          kubectl cluster-info
+
+      - name: Prepare bootstrap scripts
+        run: chmod +x scripts/bootstrap-local.sh scripts/ci-pod-diagnostics.sh scripts/wait-for-app.sh scripts/wait-for-apps.sh scripts/verify-platform.sh
+
       - name: Install MetalLB
         run: |
-          kubectl apply -f https://raw.githubusercontent.com/metallb/metallb/v0.14.9/config/manifests/metallb-native.yaml
-          kubectl -n metallb-system rollout status deploy/controller --timeout=180s
+          if kubectl get ns metallb-system >/dev/null 2>&1 \
+            && kubectl -n metallb-system get deploy/controller >/dev/null 2>&1; then
+            echo "MetalLB already installed — waiting for controller ready"
+            kubectl -n metallb-system rollout status deploy/controller --timeout=180s
+          else
+            kubectl apply -f https://raw.githubusercontent.com/metallb/metallb/v0.14.9/config/manifests/metallb-native.yaml
+            kubectl -n metallb-system rollout status deploy/controller --timeout=180s
+          fi
           kubectl apply -f hack/kind/metallb.yaml
 
-      - name: Bootstrap Argo CD and cluster-root
-        env:
-          GITOPS_REPO_URL: https://github.com/${{ github.repository }}
-          GITOPS_REVISION: ${{ github.head_ref || github.ref_name }}
-          INSTALL_METALLB: "false"
-          WAIT_TIMEOUT: "1200"
-        run: |
-          chmod +x scripts/bootstrap-local.sh
-          # Cluster already created by kind-action — skip create, install platform shell
-          RECREATE_CLUSTER=false INSTALL_METALLB=false \
-            ./scripts/bootstrap-local.sh
+      - name: Platform 1/10 — Install Argo CD
+        run: BOOTSTRAP_PHASE=argocd ./scripts/bootstrap-local.sh
+
+      - name: Platform 2/10 — Wave 1 cert-manager
+        run: WAIT_TIMEOUT=600 ./scripts/wait-for-app.sh cert-manager
+
+      - name: Platform 3/10 — Wave 2 platform-ca
+        run: WAIT_TIMEOUT=600 ./scripts/wait-for-app.sh platform-ca
+
+      - name: Platform 4/10 — Wave 3 istio-base
+        run: WAIT_TIMEOUT=300 ./scripts/wait-for-app.sh istio-base
+
+      - name: Platform 5/10 — Wave 4 istio-csr
+        run: WAIT_TIMEOUT=600 ./scripts/wait-for-app.sh istio-csr
+
+      - name: Platform 6/10 — Wave 5 istiod
+        run: WAIT_TIMEOUT=600 ./scripts/wait-for-app.sh istiod
+
+      - name: Platform 7/10 — Wave 6 istio-gateway, istio-policies
+        run: WAIT_TIMEOUT=600 ./scripts/wait-for-apps.sh istio-gateway istio-policies
+
+      - name: Platform 8/10 — Wave 7 istio-ingress-tls, monitoring, kyverno
+        run: WAIT_TIMEOUT=900 ./scripts/wait-for-apps.sh istio-ingress-tls monitoring kyverno
+
+      - name: Platform 9/10 — Wave 8 monitoring-alerts, platform-policies
+        run: WAIT_TIMEOUT=300 ./scripts/wait-for-apps.sh monitoring-alerts platform-policies
+
+      - name: Platform 10/10 — Wave 9 mtls-demo
+        run: WAIT_TIMEOUT=600 ./scripts/wait-for-app.sh mtls-demo
 
       - name: Verify core platform health
         env:
           LOCAL: "true"
-          CLUSTER_NAME: infra-local
         run: |
-          chmod +x scripts/verify-platform.sh
-          ./scripts/verify-platform.sh || {
-            echo "--- Argo CD applications ---"
-            kubectl -n argocd get applications -o wide || true
-            echo "--- cert-manager pods ---"
-            kubectl -n cert-manager get pods || true
-            exit 1
-          }
+          for attempt in $(seq 1 6); do
+            echo "Verify attempt ${attempt}/6"
+            if ./scripts/verify-platform.sh; then
+              exit 0
+            fi
+            if [[ "${attempt}" -lt 6 ]]; then
+              echo "Platform still syncing — retrying in 60s..."
+              sleep 60
+            fi
+          done
+          echo "--- Argo CD applications ---"
+          kubectl -n argocd get applications -o wide || true
+          exit 1
+
+      - name: Tear down kind cluster
+        if: success()
+        run: kind delete cluster --name "${CLUSTER_NAME}" || true
+
+  report-failure:
+    needs: smoke
+    if: failure() && github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+    steps:
+      - uses: actions/github-script@v7
+        with:
+          script: |
+            const runId = context.runId;
+            const { data: run } = await github.rest.actions.getWorkflowRun({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              run_id: runId,
+            });
+            const { data: jobs } = await github.rest.actions.listJobsForWorkflowRun({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              run_id: runId,
+            });
+            let failedStep = 'unknown';
+            for (const job of jobs.jobs) {
+              for (const step of job.steps || []) {
+                if (step.conclusion === 'failure') {
+                  failedStep = step.name;
+                  break;
+                }
+              }
+              if (failedStep !== 'unknown') break;
+            }
+            const runUrl = `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${runId}`;
+            const body = [
+              '## Kind smoke failed',
+              '',
+              `**Failed step:** \`${failedStep}\``,
+              `**Workflow run:** ${runUrl}`,
+              '',
+              '**Next steps**',
+              '- Ask the Cloud Agent: `fix CI until green`',
+              '- Or run locally: `./scripts/from-here.sh fix-ci`',
+              '',
+              'The agent will read `--log-failed`, patch, and push.',
+            ].join('\n');
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.payload.pull_request.number,
+              body,
+            });

@@ -45,7 +45,7 @@ Or configure kubectl context manually and set `LOCAL=true`.
 |-------|----------------|
 | Nodes | At least one `Ready` node |
 | Argo CD | `argocd-server` Running |
-| cluster-root | Application exists |
+| cluster-root | Application exists (skipped in `LOCAL=true` / Kind smoke wave bootstrap) |
 | Platform apps | cert-manager, Istio, monitoring, mtls-demo, etc. |
 | Workloads | Key pods Running in cert-manager, istio-system, mtls-demo |
 | mTLS | `PeerAuthentication` default mode `STRICT` |

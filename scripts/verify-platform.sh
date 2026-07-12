@@ -65,6 +65,11 @@ check_argocd() {
     fail "argocd-server is not Running"
   fi
 
+  if [[ "${LOCAL:-false}" == "true" ]]; then
+    pass "Local bootstrap — cluster-root not used (Kind smoke materializes apps wave-by-wave)"
+    return 0
+  fi
+
   if kubectl -n "${NAMESPACE_ARGOCD}" get application cluster-root >/dev/null 2>&1; then
     local sync health
     sync="$(kubectl -n "${NAMESPACE_ARGOCD}" get application cluster-root -o jsonpath='{.status.sync.status}' 2>/dev/null || true)"

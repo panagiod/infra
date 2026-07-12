@@ -11,14 +11,5 @@ metadata:
 spec:
   mtls:
     mode: STRICT  # Require encrypted, mutually authenticated connections only
----
-# Default for mtls-demo — demo app namespace also enforces STRICT mTLS
-# Ensures frontend→backend traffic is encrypted and identity-verified by Istio.
-apiVersion: security.istio.io/v1beta1
-kind: PeerAuthentication
-metadata:
-  name: default
-  namespace: mtls-demo
-spec:
-  mtls:
-    mode: STRICT
+# mtls-demo namespace PeerAuthentication lives in gitops/apps/mtls-demo/base/ so it
+# syncs with the namespace (istio-policies runs before mtls-demo in bootstrap order).

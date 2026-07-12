@@ -10,6 +10,11 @@ INSTALL_METALLB="${INSTALL_METALLB:-true}"            # LoadBalancer support for
 RECREATE_CLUSTER="${RECREATE_CLUSTER:-false}"
 DESTROY="${DESTROY:-false}"
 WAIT_TIMEOUT="${WAIT_TIMEOUT:-900}"                   # seconds to wait for core apps
+STRICT_WAIT="${STRICT_WAIT:-false}"                   # exit 1 on wait timeout (CI)
+FAIL_FAST="${FAIL_FAST:-true}"                        # exit early on terminal pod/sync errors (CI)
+BOOTSTRAP_PHASE="${BOOTSTRAP_PHASE:-all}"             # all | argocd | cluster-root | materialize | wait
+WAIT_APP="${WAIT_APP:-}"                              # single app when BOOTSTRAP_PHASE=materialize|wait
+CLUSTER_ROOT_AUTOMATED_SYNC="${CLUSTER_ROOT_AUTOMATED_SYNC:-true}"  # real clusters: cluster-root syncs children from Git
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 KIND_CONFIG="${REPO_ROOT}/hack/kind/cluster.yaml"
@@ -63,26 +68,65 @@ install_metallb() {
 }
 
 install_argocd() {
-  log "Installing Argo CD"
+  log "Installing Argo CD (latest stable chart)"
   kubectl create namespace argocd --dry-run=client -o yaml | kubectl apply -f -
   helm repo add argo https://argoproj.github.io/argo-helm >/dev/null 2>&1 || true
   helm repo update argo
 
   helm upgrade --install argocd argo/argo-cd \
     --namespace argocd \
-    --set configs.params.server.insecure=true \
-    --set server.service.type=ClusterIP \
-    --set server.ingress.enabled=false \
-    --set applicationSet.enabled=true \
-    --set dex.enabled=false \
-    --set notifications.enabled=false \
+    --values "${REPO_ROOT}/hack/argocd/bootstrap-values.yaml" \
     --wait --timeout 10m
 
   kubectl -n argocd rollout status deploy/argocd-server --timeout=300s
+  kubectl -n argocd rollout status deploy/argocd-repo-server --timeout=300s
+  kubectl -n argocd rollout status statefulset/argocd-application-controller --timeout=300s 2>/dev/null \
+    || kubectl -n argocd rollout status deploy/argocd-application-controller --timeout=300s
+  log "Argo CD ready"
+}
+
+materialize_application() {
+  local app="$1"
+  log "Materializing Application CR: ${app} (gitops/clusters/${ENVIRONMENT})"
+  local cluster_dir="${REPO_ROOT}/gitops/clusters/${ENVIRONMENT}"
+  local build_dir
+  build_dir="$(mktemp -d)"
+  cp -a "${cluster_dir}/." "${build_dir}/"
+  sed -i "s|^GITOPS_TARGET_REVISION=.*|GITOPS_TARGET_REVISION=${GITOPS_REVISION}|" "${build_dir}/cluster.env"
+  sed -i "s|^GITOPS_REPO_URL=.*|GITOPS_REPO_URL=${GITOPS_REPO_URL}|" "${build_dir}/cluster.env"
+  kustomize build "${build_dir}" | python3 -c '
+import sys, yaml
+
+target = sys.argv[1]
+found = False
+for doc in yaml.safe_load_all(sys.stdin):
+    if doc and doc.get("kind") == "Application" and doc.get("metadata", {}).get("name") == target:
+        yaml.dump(doc, sys.stdout, default_flow_style=False)
+        found = True
+if not found:
+    sys.stderr.write(f"ERROR: Application {target!r} not found in kustomize build\n")
+    sys.exit(1)
+' "${app}" | kubectl apply -f -
+  rm -rf "${build_dir}"
 }
 
 apply_cluster_root() {
   log "Registering cluster-root Application (gitops/clusters/${ENVIRONMENT})"
+  local sync_policy=""
+  if [[ "${CLUSTER_ROOT_AUTOMATED_SYNC}" == "true" ]]; then
+    sync_policy="  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true"
+  else
+    log "cluster-root automated sync disabled"
+    sync_policy="  syncPolicy:
+    syncOptions:
+      - CreateNamespace=true"
+  fi
   kubectl apply -f - <<EOF
 apiVersion: argoproj.io/v1alpha1
 kind: Application
@@ -100,42 +144,207 @@ spec:
   destination:
     server: https://kubernetes.default.svc
     namespace: argocd
-  syncPolicy:
-    automated:
-      prune: true
-      selfHeal: true
-    syncOptions:
-      - CreateNamespace=true
-      - ServerSideApply=true
+${sync_policy}
 EOF
+  kubectl -n argocd annotate application cluster-root argocd.argoproj.io/refresh=hard --overwrite >/dev/null 2>&1 || true
 }
 
-wait_for_apps() {
-  log "Waiting for core Applications (timeout ${WAIT_TIMEOUT}s)"
-  local apps=(cert-manager platform-ca istiod mtls-demo)
-  local deadline=$((SECONDS + WAIT_TIMEOUT))
+app_status_line() {
+  local app="$1"
+  if ! kubectl -n argocd get application "${app}" >/dev/null 2>&1; then
+    printf '  %s: not created yet\n' "${app}"
+    return 0
+  fi
+  local sync health msg
+  sync="$(kubectl -n argocd get application "${app}" -o jsonpath='{.status.sync.status}' 2>/dev/null || true)"
+  health="$(kubectl -n argocd get application "${app}" -o jsonpath='{.status.health.status}' 2>/dev/null || true)"
+  msg="$(kubectl -n argocd get application "${app}" -o jsonpath='{.status.conditions[?(@.type=="ComparisonError")].message}' 2>/dev/null || true)"
+  if [[ -z "${msg}" ]]; then
+    msg="$(kubectl -n argocd get application "${app}" -o jsonpath='{.status.operationState.message}' 2>/dev/null | head -c 120 || true)"
+  fi
+  if [[ -n "${msg}" ]]; then
+    printf '  %s: sync=%s health=%s — %s\n' "${app}" "${sync:-pending}" "${health:-pending}" "${msg}"
+  else
+    printf '  %s: sync=%s health=%s\n' "${app}" "${sync:-pending}" "${health:-pending}"
+  fi
+}
 
-  for app in "${apps[@]}"; do
-    log "Waiting for Application: ${app}"
-    while (( SECONDS < deadline )); do
-      if kubectl -n argocd get application "${app}" >/dev/null 2>&1; then
+app_workload_ready() {
+  local app="$1"
+  case "${app}" in
+    istio-gateway)
+      local available
+      available="$(kubectl -n istio-system get deploy istio-ingressgateway -o jsonpath='{.status.availableReplicas}' 2>/dev/null || echo 0)"
+      [[ "${available:-0}" -ge 1 ]]
+      ;;
+    mtls-demo)
+      local backend frontend
+      backend="$(kubectl -n mtls-demo get deploy backend -o jsonpath='{.status.availableReplicas}' 2>/dev/null || echo 0)"
+      frontend="$(kubectl -n mtls-demo get deploy frontend -o jsonpath='{.status.availableReplicas}' 2>/dev/null || echo 0)"
+      [[ "${backend:-0}" -ge 1 && "${frontend:-0}" -ge 1 ]]
+      ;;
+    *)
+      return 1
+      ;;
+  esac
+}
+
+app_is_ready() {
+  local app="$1"
+  local sync health phase
+  sync="$(kubectl -n argocd get application "${app}" -o jsonpath='{.status.sync.status}' 2>/dev/null || true)"
+  health="$(kubectl -n argocd get application "${app}" -o jsonpath='{.status.health.status}' 2>/dev/null || true)"
+  phase="$(kubectl -n argocd get application "${app}" -o jsonpath='{.status.operationState.phase}' 2>/dev/null || true)"
+  local comparison_err
+  comparison_err="$(kubectl -n argocd get application "${app}" -o jsonpath='{.status.conditions[?(@.type=="ComparisonError")].message}' 2>/dev/null || true)"
+
+  if [[ -n "${comparison_err}" ]]; then
+    return 1
+  fi
+  # Synced apps whose Argo health lags behind Deployment readiness (gateway, demo workloads).
+  if [[ "${sync}" == "Synced" && "${phase}" == "Succeeded" ]] && app_workload_ready "${app}"; then
+    return 0
+  fi
+  if [[ "${health}" != "Healthy" ]]; then
+    return 1
+  fi
+  if [[ "${sync}" == "Synced" ]]; then
+    return 0
+  fi
+  # Istio and other Helm charts may stay OutOfSync while Healthy (benign live diff).
+  if [[ "${sync}" == "OutOfSync" && "${phase}" == "Succeeded" ]]; then
+    return 0
+  fi
+  return 1
+}
+
+app_destination_namespace() {
+  local app="$1"
+  kubectl -n argocd get application "${app}" -o jsonpath='{.spec.destination.namespace}' 2>/dev/null || true
+}
+
+app_terminal_pod_failures() {
+  local app="$1"
+  local ns
+  ns="$(app_destination_namespace "${app}")"
+  [[ -n "${ns}" ]] || return 0
+  kubectl get namespace "${ns}" >/dev/null 2>&1 || return 0
+
+  kubectl get pods -n "${ns}" -o json 2>/dev/null | python3 -c "
+import json, sys
+terminal = {
+    'ImagePullBackOff', 'ErrImagePull', 'CrashLoopBackOff',
+    'CreateContainerConfigError', 'InvalidImageName',
+}
+data = json.load(sys.stdin)
+lines = []
+for pod in data.get('items', []):
+    name = pod['metadata']['name']
+    for label, statuses in (('container', pod.get('status', {}).get('containerStatuses')),
+                            ('init', pod.get('status', {}).get('initContainerStatuses'))):
+        for cs in statuses or []:
+            waiting = (cs.get('state') or {}).get('waiting') or {}
+            reason = waiting.get('reason')
+            if reason in terminal:
+                msg = waiting.get('message', '')[:160]
+                cname = cs.get('name', '?')
+                prefix = f'{name}/{cname}'
+                if label == 'init':
+                    prefix += ' (init)'
+                lines.append(f'{prefix}: {reason} — {msg}')
+if lines:
+    print('\n'.join(lines))
+" 2>/dev/null || true
+}
+
+app_permanent_sync_error() {
+  local app="$1"
+  local phase msg
+  phase="$(kubectl -n argocd get application "${app}" -o jsonpath='{.status.operationState.phase}' 2>/dev/null || true)"
+  msg="$(kubectl -n argocd get application "${app}" -o jsonpath='{.status.operationState.message}' 2>/dev/null || true)"
+
+  if [[ "${phase}" == "Failed" && -n "${msg}" ]]; then
+    printf '%s\n' "${msg}"
+    return 0
+  fi
+  if [[ "${msg}" == *'not found'* ]]; then
+    printf '%s\n' "${msg}"
+    return 0
+  fi
+  return 1
+}
+
+fail_fast_if_broken() {
+  local app="$1"
+  [[ "${FAIL_FAST}" == "true" ]] || return 0
+
+  local pod_issues sync_err
+  pod_issues="$(app_terminal_pod_failures "${app}")"
+  if [[ -n "${pod_issues}" ]]; then
+    warn "Terminal pod failure for ${app} — failing fast (FAIL_FAST=true)"
+    printf '%s\n' "${pod_issues}" >&2
+    if [[ "${CI_POD_DIAGNOSTICS:-false}" == "true" ]]; then
+      "${REPO_ROOT}/scripts/ci-pod-diagnostics.sh" "${app}" || true
+    fi
+    [[ "${STRICT_WAIT}" == "true" ]] && exit 1
+    return 0
+  fi
+
+  sync_err="$(app_permanent_sync_error "${app}" || true)"
+  if [[ -n "${sync_err}" ]]; then
+    warn "Permanent Argo CD sync error for ${app} — failing fast (FAIL_FAST=true)"
+    printf '%s\n' "${sync_err}" >&2
+    if [[ "${CI_POD_DIAGNOSTICS:-false}" == "true" ]]; then
+      "${REPO_ROOT}/scripts/ci-pod-diagnostics.sh" "${app}" || true
+    fi
+    [[ "${STRICT_WAIT}" == "true" ]] && exit 1
+  fi
+}
+
+wait_for_single_app() {
+  local app="$1"
+  local timeout="${2:-${WAIT_TIMEOUT}}"
+  log "Waiting for Application: ${app} (timeout ${timeout}s)"
+  local deadline=$((SECONDS + timeout))
+
+  while (( SECONDS < deadline )); do
+    if kubectl -n argocd get application "${app}" >/dev/null 2>&1; then
+      if app_is_ready "${app}"; then
         local sync health
         sync="$(kubectl -n argocd get application "${app}" -o jsonpath='{.status.sync.status}' 2>/dev/null || true)"
         health="$(kubectl -n argocd get application "${app}" -o jsonpath='{.status.health.status}' 2>/dev/null || true)"
-        if [[ "${sync}" == "Synced" && "${health}" == "Healthy" ]]; then
-          log "${app}: Synced / Healthy"
-          break
-        fi
-        printf '  %s: sync=%s health=%s\n' "${app}" "${sync:-pending}" "${health:-pending}"
-      else
-        printf '  %s: not created yet\n' "${app}"
+        log "${app}: ready (sync=${sync} health=${health})"
+        kubectl -n argocd get application "${app}" -o wide || true
+        return 0
       fi
-      sleep 15
-    done
-    if (( SECONDS >= deadline )); then
-      warn "Timed out waiting for ${app} — platform may still be syncing"
-      return 0
+      app_status_line "${app}"
+      fail_fast_if_broken "${app}"
+    else
+      app_status_line "${app}"
     fi
+    sleep "${WAIT_POLL_INTERVAL:-5}"
+  done
+
+  warn "Timed out waiting for ${app}"
+  log "Argo CD applications (debug)"
+  kubectl -n argocd get applications -o wide || true
+  if [[ "${CI_POD_DIAGNOSTICS:-false}" == "true" ]]; then
+    log "Pod diagnostics for ${app} (CI_POD_DIAGNOSTICS=true)"
+    "${REPO_ROOT}/scripts/ci-pod-diagnostics.sh" "${app}" || true
+  fi
+  if [[ "${STRICT_WAIT}" == "true" ]]; then
+    exit 1
+  fi
+  return 0
+}
+
+wait_for_apps() {
+  log "Waiting for core Applications (timeout ${WAIT_TIMEOUT}s each, materialize per wave)"
+  local apps=(cert-manager platform-ca istio-base istio-csr istiod istio-gateway istio-policies mtls-demo)
+  local app
+  for app in "${apps[@]}"; do
+    materialize_application "${app}"
+    wait_for_single_app "${app}" "${WAIT_TIMEOUT}"
   done
 }
 
@@ -151,19 +360,51 @@ print_access_hints() {
   printf '\nSee docs/local-dev.md and docs/verify.md for next steps.\n'
 }
 
+run_phase() {
+  case "${BOOTSTRAP_PHASE}" in
+    all)
+      check_prerequisites
+      create_cluster
+      install_metallb
+      install_argocd
+      apply_cluster_root
+      wait_for_apps
+      print_access_hints
+      ;;
+    argocd)
+      require_cmd kubectl
+      require_cmd helm
+      install_argocd
+      ;;
+    cluster-root)
+      require_cmd kubectl
+      apply_cluster_root
+      kubectl -n argocd get applications -o wide 2>/dev/null || true
+      ;;
+    materialize)
+      require_cmd kubectl
+      require_cmd kustomize
+      [[ -n "${WAIT_APP}" ]] || die "WAIT_APP is required when BOOTSTRAP_PHASE=materialize"
+      materialize_application "${WAIT_APP}"
+      ;;
+    wait)
+      require_cmd kubectl
+      [[ -n "${WAIT_APP}" ]] || die "WAIT_APP is required when BOOTSTRAP_PHASE=wait"
+      wait_for_single_app "${WAIT_APP}" "${WAIT_TIMEOUT}"
+      ;;
+    *)
+      die "Unknown BOOTSTRAP_PHASE: ${BOOTSTRAP_PHASE} (use all|argocd|cluster-root|materialize|wait)"
+      ;;
+  esac
+}
+
 main() {
   if [[ "${DESTROY}" == "true" ]]; then
     destroy_cluster
     exit 0
   fi
 
-  check_prerequisites
-  create_cluster
-  install_metallb
-  install_argocd
-  apply_cluster_root
-  wait_for_apps
-  print_access_hints
+  run_phase
 }
 
 main "$@"

@@ -1,0 +1,49 @@
+---
+description: After repeated CI failures for the same reason — add pod diagnostics before guessing fixes
+alwaysApply: true
+---
+
+# CI pod diagnostics (two-strike rule)
+
+When Kind smoke (or other cluster CI) fails **twice in a row** with the **same failing step** and **same symptom** (e.g. same Application timeout, same `Degraded` health), do not push another blind GitOps tweak. **Add or enable pod diagnostics first** so the next failure log includes real workload evidence.
+
+See also: `ci-fix-gitops.mdc`, `ci-until-green.mdc`.
+
+## Two-strike trigger
+
+Treat as "two strikes" when **all** match:
+
+1. The **same workflow step** failed in the last two completed runs (e.g. `Platform 8/11 — Wave 6 istio-gateway, istio-policies`).
+2. The **same Application or component** is implicated (e.g. `istio-gateway` timeout with `health=Degraded`).
+3. Logs show only Argo sync/health lines — **no pod events, container logs, or `kubectl describe` output**.
+
+## Required actions on two strikes
+
+1. **Ensure `scripts/ci-pod-diagnostics.sh` exists** and maps the failing Application to namespaces/workloads.
+2. **Wire diagnostics into wait timeouts** — `bootstrap-local.sh` calls the script when `CI_POD_DIAGNOSTICS=true` (set in `.github/workflows/kind-smoke.yml` for smoke tests).
+3. **Read the diagnostic block** in `--log-failed` before the next fix: pod events, `CrashLoopBackOff`, image pull errors, cert/volume mount failures, readiness probe failures.
+4. **Fix root cause** per `ci-fix-gitops.mdc` using evidence from diagnostics — not another timeout increase.
+
+## What diagnostics must include
+
+For the failing Application:
+
+- Full Argo CD Application status (sync, health, conditions, operation message)
+- Pods and Deployments in the destination namespace
+- Recent namespace events
+- `kubectl describe pod` for non-Running pods
+- Container logs (current and `--previous` if restarted)
+- App-specific checks (e.g. `istiod-tls` secret, `istio-ca-root-cert` ConfigMap for istio-csr/istiod)
+
+## Do not
+
+- Disable diagnostics after one green run if the underlying wait path is unchanged
+- Treat diagnostics as a substitute for GitOps-native fixes — they inform the fix
+- Skip diagnostics because "Argo said Degraded" without pod-level proof
+
+## Agent self-check after two strikes
+
+- [ ] `CI_POD_DIAGNOSTICS=true` in Kind smoke (or equivalent for the failing workflow)
+- [ ] `ci-pod-diagnostics.sh` invoked on wait timeout in `wait_for_single_app`
+- [ ] I read pod logs/events from the latest failed run before pushing the next fix
+- [ ] The fix addresses the diagnosed failure (certs, order, probes, resources), not only wait duration

@@ -12,10 +12,16 @@ on:
       - main
     paths:
       - 'terraform/**'
+  workflow_dispatch:
+
+concurrency:
+  group: terraform-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 
 jobs:
   fmt:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     defaults:
       run:
         working-directory: terraform
@@ -31,6 +37,7 @@ jobs:
 
   validate:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     strategy:
       matrix:
         include:

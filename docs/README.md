@@ -7,7 +7,10 @@
 | Doc | Audience |
 |-----|----------|
 | [getting-started.md](getting-started.md) | Everyone — decision tree and golden paths |
-| [codespaces.md](codespaces.md) | No own machine — browser lab via GitHub Codespaces |
+| [cloud-agent.md](cloud-agent.md) | **Default** — run everything via Cursor agent (`from-here.sh`) |
+| [codespaces.md](codespaces.md) | **Option A** — browser lab via GitHub Codespaces |
+| [ci-only.md](ci-only.md) | **Option B** — contribute via PR + CI, no cluster |
+| [quota-automation.md](quota-automation.md) | Auto-shutdown for Codespaces + CI quota guards |
 | [project-status.md](project-status.md) | What's complete, what's lab-only, what needs cloud |
 | [local-dev.md](local-dev.md) | No cloud budget — kind cluster in Docker |
 
@@ -45,10 +48,16 @@
 
 | Script | Purpose |
 |--------|---------|
-| `scripts/bootstrap-local.sh` | kind + Argo CD + GitOps ($0) |
+| `scripts/bootstrap-local.sh` | kind + Argo CD + GitOps ($0); phases: `argocd`, `cluster-root`, `wait` |
+| `scripts/wait-for-app.sh` | Wait for one Argo CD Application |
+| `scripts/wait-for-apps.sh` | Wait for a dependency wave (parallel apps, Kind smoke) |
 | `scripts/bootstrap-aws.sh` | AWS EKS staging/prod |
 | `scripts/bootstrap-azure.sh` | Azure AKS staging/prod |
 | `scripts/verify-platform.sh` | Post-bootstrap health checks |
+| `scripts/from-here.sh` | **Cloud Agent** — check, lab, push, status from Cursor |
+| `scripts/start-lab.sh` | **Option A** — bootstrap + verify in one command |
+| `scripts/shutdown-lab.sh` | Destroy kind + optionally stop Codespace |
+| `scripts/ci-validate.sh` | **Option B** — run CI checks locally before push |
 | `scripts/setup-github-oidc-aws.sh` | One-time AWS OIDC for CI plan |
 
 ## GitOps configuration

@@ -10,11 +10,12 @@ Run the full platform in a **cloud dev environment** from your browser. Free tie
 4. In the terminal:
 
 ```bash
-./scripts/bootstrap-local.sh
-LOCAL=true ./scripts/verify-platform.sh
+./scripts/start-lab.sh
 ```
 
-The repo includes `.devcontainer/` with Docker-in-Docker, kubectl, Helm, and kind pre-installed.
+One command bootstraps kind, installs the platform, and runs health checks (~15 min first run).
+
+The repo includes `.devcontainer/` with Docker-in-Docker, kubectl, Helm, Terraform, kind, and GitHub CLI pre-installed.
 
 ## Machine size
 
@@ -52,13 +53,29 @@ Codespaces builds from the branch you select when creating the codespace. To tes
 GITOPS_REVISION=feat/my-branch RECREATE_CLUSTER=true ./scripts/bootstrap-local.sh
 ```
 
-## Tear down
+## Tear down (save quota)
+
+**Recommended — destroy kind and stop the codespace:**
+
+```bash
+STOP_CODESPACE=true ./scripts/shutdown-lab.sh
+```
+
+**Kind only** (codespace keeps running — still uses quota):
 
 ```bash
 DESTROY=true ./scripts/bootstrap-local.sh
 ```
 
-Delete the codespace from GitHub when finished to stop billing/quota use.
+### Automatic shutdown (configured in `.devcontainer/`)
+
+| Trigger | When |
+|---------|------|
+| **Idle timeout** | 15 minutes with no activity |
+| **Max open duration** | 2 hours total |
+| **On stop** | kind cluster deleted + Docker pruned |
+
+Full details: [quota-automation.md](quota-automation.md)
 
 ## Known limitations
 
@@ -71,7 +88,17 @@ Delete the codespace from GitHub when finished to stop billing/quota use.
 
 ## No Codespaces quota?
 
-See [getting-started.md](getting-started.md) — **“Contribute without a cluster”** uses GitHub Actions only (PR + CI).
+Use **Option B** — [ci-only.md](ci-only.md): edit on GitHub, open a PR, CI validates with no cluster.
+
+## Option B from this codespace
+
+You can also run CI checks locally before pushing:
+
+```bash
+./scripts/ci-validate.sh
+```
+
+See [ci-only.md](ci-only.md).
 
 ## Alternatives
 

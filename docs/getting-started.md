@@ -32,10 +32,60 @@ flowchart TD
 | Understanding the design | [architecture.md](architecture.md) |
 | What's done vs what's lab-only | [project-status.md](project-status.md) |
 | After bootstrap — health checks | [verify.md](verify.md) |
+| Save quota (auto-shutdown) | [quota-automation.md](quota-automation.md) |
 
 ---
 
-## Golden path: local ($0)
+## Golden path: from here (Cursor Cloud Agent) — recommended
+
+**No own machine.** Tell the agent what you want; it runs commands in this environment.
+
+| You ask | Agent runs |
+|---------|------------|
+| Check changes | `./scripts/from-here.sh check local` |
+| Run the lab | `./scripts/from-here.sh lab` (Kind smoke in GitHub Actions) |
+| Push / open PR | `./scripts/from-here.sh push` |
+| CI status | `./scripts/from-here.sh status` |
+
+Full guide: [cloud-agent.md](cloud-agent.md)
+
+---
+
+## Golden path: A + B (Codespaces lab + CI) — manual
+
+**No own machine.** Use Codespaces for hands-on work; CI validates every PR automatically.
+
+### A — Start the lab (Codespaces)
+
+1. GitHub → **Code** → **Codespaces** → **Create codespace on main**
+2. Terminal:
+
+```bash
+./scripts/start-lab.sh
+```
+
+### B — Contribute (automatic on every PR)
+
+1. Branch from `main` (`feat/`, `fix/`, `docs/`)
+2. Edit `gitops/` or `terraform/` (GitHub web UI or in the codespace)
+3. Optional: `./scripts/ci-validate.sh` before pushing
+4. Open PR → CI runs automatically (kustomize, kind-smoke, terraform validate)
+
+Full walkthrough: [ci-only.md](ci-only.md)
+
+### Shutdown — save quota (important)
+
+```bash
+STOP_CODESPACE=true ./scripts/shutdown-lab.sh
+```
+
+**Automatic:** codespace stops after **15 min idle** or **2 h max**; kind cluster is deleted on stop.
+
+Details: [codespaces.md](codespaces.md) · [ci-only.md](ci-only.md) · [quota-automation.md](quota-automation.md)
+
+---
+
+## Golden path: local ($0, own machine)
 
 **Time:** ~15 minutes first sync (Docker + kind + full platform).
 
@@ -117,16 +167,18 @@ Details: [azure.md](azure.md) · OIDC for PR plans: [github-actions-azure-oidc.m
 
 ## Golden path: contribute without a cluster
 
-You can still improve the repo using CI only:
+**Option B** — no Docker, no Codespaces, no cloud:
 
 1. Branch from `main` (`feat/`, `fix/`, `chore/`, `docs/`)
-2. Edit `gitops/` or `terraform/`
+2. Edit `gitops/` or `terraform/` on github.com or locally
 3. Open a PR — CI runs:
    - `terraform fmt` + `validate`
    - `kustomize build` on GitOps paths
    - **Kind smoke** (ephemeral cluster) on `gitops/**` changes
 
-No cloud credentials required for manifest and Terraform validation.
+Optional pre-push: `./scripts/ci-validate.sh`
+
+**Full guide:** [ci-only.md](ci-only.md)
 
 ---
 

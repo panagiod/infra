@@ -1,81 +1,91 @@
-# AWS bootstrap guide (manual)
+# Bootstrap and Kind smoke
 
-> **Prefer the script?** Use [QUICKSTART.md](QUICKSTART.md) (`./scripts/bootstrap-aws.sh`).
->
-> **No cloud?** Use [local-dev.md](local-dev.md).
+How the platform is installed on **kind** (CI), **local dev**, and **real clusters** (EKS/AKS).
 
-Step-by-step manual Terraform for AWS staging and prod, plus post-bootstrap verification.
+## Models
 
-## 1. Remote state (one-time)
+### Real clusters (EKS / AKS)
 
-```bash
-export AWS_REGION=us-east-1
-export TF_STATE_BUCKET=your-org-terraform-state
-export TF_LOCK_TABLE=your-org-terraform-locks
+1. Terraform provisions the cluster.
+2. Argo CD is installed (bootstrap chart or operator).
+3. A single **cluster-root** Application points at `gitops/clusters/<env>/`.
+4. Argo CD syncs all child Application CRs from Git; components converge with retries.
 
-aws s3api create-bucket --bucket "$TF_STATE_BUCKET" --region "$AWS_REGION"
-aws s3api put-bucket-versioning \
-  --bucket "$TF_STATE_BUCKET" \
-  --versioning-configuration Status=Enabled
+Install **order** in `applications.yaml` is documentation and Kind smoke enforcement — Argo does not serialize child Applications.
 
-aws dynamodb create-table \
-  --table-name "$TF_LOCK_TABLE" \
-  --attribute-definitions AttributeName=LockID,AttributeType=S \
-  --key-schema AttributeName=LockID,KeyType=HASH \
-  --billing-mode PAY_PER_REQUEST \
-  --region "$AWS_REGION"
+### Kind smoke (CI) and local ordered bootstrap
+
+Kind smoke must **not** register all child Applications at once. That caused:
+
+- Gateway pods with `image: auto` before istiod’s mutating webhook was ready
+- istiod/webhook TLS errors when istio-csr certs were not ready
+- Stale ReplicaSets when reusing a failed cluster
+
+**CI model:**
+
+1. Install Argo CD only.
+2. For each dependency **wave**: materialize **one** (or one parallel group of) Application CR(s), then wait until healthy.
+3. Use a **fresh** kind cluster every run (`RECREATE_CLUSTER=true`).
+4. Tear down only on success (keeps runner clean on green).
+
+Materialization reads the same `gitops/clusters/<env>/applications.yaml` as production — no duplicate manifests.
+
+**Fast preflight (GitOps workflow / `ci-preflight-gitops.sh`):** namespace wave order, image registry checks, kubeconform on rendered manifests — before Kind smoke creates a cluster.
+
+**In-cluster fail-fast:** `FAIL_FAST=true` (Kind smoke default) exits wait loops on `ImagePullBackOff`, `CrashLoopBackOff`, or permanent Argo sync errors (`not found`) instead of waiting the full wave timeout.
+
+```text
+Wave 1: materialize cert-manager     → wait
+Wave 2: materialize platform-ca      → wait
+Wave 3: materialize istio-base       → wait
+Wave 4: materialize istio-csr        → wait   # before istiod (cert-manager requirement)
+Wave 5: materialize istiod           → wait
+Wave 6: materialize istio-gateway + istio-policies (parallel wait)
+…
 ```
 
-```bash
-cp terraform/environments/staging/backend.hcl.example terraform/environments/staging/backend.hcl
-cp terraform/environments/prod/backend.hcl.example terraform/environments/prod/backend.hcl
-```
+`istio-policies` only targets **istio-system** (mesh control plane). App-namespace policies
+(e.g. `mtls-demo` PeerAuthentication) ship with their Application so namespaces exist first.
 
-## 2. Environment variables
+### Istio + cert-manager (istio-csr)
 
-```bash
-cp terraform/environments/staging/terraform.tfvars.example terraform/environments/staging/terraform.tfvars
-cp terraform/environments/prod/terraform.tfvars.example terraform/environments/prod/terraform.tfvars
-```
+Per [cert-manager istio-csr docs](https://cert-manager.io/docs/usage/istio-csr/):
 
-| Variable | Staging | Prod |
-|----------|---------|------|
-| `cluster_name` | `infra-staging` | `infra-prod` |
-| `gitops_repo_url` | This repo URL | Same |
-| `single_nat_gateway` | `true` | `false` |
+1. cert-manager + platform CA
+2. **istio-csr** (creates `istiod-tls`, `istio-ca-root-cert`)
+3. **istiod** with `global.caAddress` and `pilot.env.ENABLE_CA_SERVER=false`
 
-## 3. Apply Terraform
+The istiod chart (1.30+) mounts `istiod-tls` and `istio-ca-root-cert` automatically — do **not** duplicate those volumes in Helm values.
 
-**Staging first:**
+### Istio ingress gateway
 
-```bash
-cd terraform/environments/staging
-terraform init -backend-config=backend.hcl
-terraform apply -target=module.vpc -target=module.eks
-terraform apply
-```
+The gateway Helm chart uses `image: auto` and `inject.istio.io/templates: gateway`. The **istiod mutating webhook** replaces `auto` with `proxyv2` at pod admission.
 
-Repeat for `terraform/environments/prod`.
+Therefore:
 
-## 4. Configure kubectl
+- Gateway Application must be materialized **after** istiod is healthy.
+- No `kubectl set image`, no `ignoreDifferences` on the Deployment image.
 
-```bash
-aws eks update-kubeconfig --region us-east-1 --name infra-staging
-```
+## Scripts
 
-## 5. Verify
+| Script / phase | Purpose |
+|----------------|---------|
+| `BOOTSTRAP_PHASE=argocd` | Install Argo CD |
+| `BOOTSTRAP_PHASE=materialize` + `WAIT_APP` | Apply one Application CR from kustomize build |
+| `BOOTSTRAP_PHASE=wait` + `WAIT_APP` | Wait for Synced + Healthy |
+| `wait-for-app.sh` | materialize → wait (Kind smoke waves) |
+| `wait-for-apps.sh` | materialize each app, then parallel wait |
+| `BOOTSTRAP_PHASE=cluster-root` | Register cluster-root only (real clusters / local GitOps root) |
 
-```bash
-./scripts/verify-platform.sh
-```
+## Environment variables
 
-Post-bootstrap checks (Argo CD UI, Grafana, ingress, mTLS demo): [verify.md](verify.md)
+| Variable | Kind smoke | Local default |
+|----------|------------|---------------|
+| `RECREATE_CLUSTER` | `true` | `false` |
+| `CI_POD_DIAGNOSTICS` | `true` | `false` |
+| `GITOPS_REVISION` | PR branch | `main` |
+| `CLUSTER_ROOT_AUTOMATED_SYNC` | omit (no bulk cluster-root in CI) | `true` |
 
-## Troubleshooting
+## Diagnostics
 
-| Issue | Check |
-|-------|-------|
-| Argo apps OutOfSync | `kubectl -n argocd describe application <name>` |
-| Istio pods not ready | cert-manager ClusterIssuer / istio-csr logs |
-| Nodes not joining | EKS node group IAM, subnet tags |
-| ALB not created | AWS Load Balancer Controller logs in `kube-system` |
+On wait timeout with `CI_POD_DIAGNOSTICS=true`, `scripts/ci-pod-diagnostics.sh` dumps pod events, describe, and logs. After two failures on the same step, read diagnostics before changing GitOps (see `ci-pod-diagnostics.mdc`).

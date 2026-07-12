@@ -42,15 +42,15 @@ Each environment syncs the same `gitops/platform/` tree; only Terraform (network
 
 ## Platform bundle (install order)
 
-Argo CD sync waves enforce bootstrap order:
+Bootstrap order is documented here and enforced in **Kind smoke** by wave-by-wave Application materialization (`wait-for-app.sh` / `wait-for-apps.sh`; see [bootstrap.md](bootstrap.md)). On real clusters, **cluster-root** syncs all child Application CRs from Git; Argo CD does not use `spec.dependsOn` on Application CRs.
 
-| Wave | Component | Namespace |
+| Order | Component | Namespace |
 |------|-----------|-----------|
 | 0 | cert-manager | cert-manager |
 | 1 | ClusterIssuer + mesh CA | cert-manager |
 | 2 | Istio base | istio-system |
-| 3 | istiod | istio-system |
-| 4 | istio-csr | cert-manager |
+| 3 | istio-csr | cert-manager |
+| 4 | istiod | istio-system |
 | 5 | Istio gateway + ingress TLS | istio-system |
 | 6 | PeerAuthentication STRICT default | istio-system |
 | 7 | kube-prometheus-stack + alert rules | monitoring |

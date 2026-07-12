@@ -3,7 +3,8 @@
 # =============================================================================
 # Same platform stack as staging, tuned for production: longer metric retention,
 # prod overlays for CA and demo app, and no staging-only tracing defaults.
-# Sync waves ensure cert-manager → CA → Istio → policies → apps install safely.
+# Install order is enforced by automated PR validation wait steps (Kind smoke)
+# and operational runbooks — not Argo CD dependsOn.
 # =============================================================================
 
 # -----------------------------------------------------------------------------
@@ -16,8 +17,6 @@ kind: Application
 metadata:
   name: cert-manager
   namespace: argocd
-  annotations:
-    argocd.argoproj.io/sync-wave: "0"
   finalizers:
     - resources-finalizer.argocd.argoproj.io
 spec:
@@ -25,6 +24,7 @@ spec:
   source:
     repoURL: https://charts.jetstack.io
     chart: cert-manager
+    targetRevision: '*'
     helm:
       releaseName: cert-manager
       values: |
@@ -32,7 +32,7 @@ spec:
         prometheus:
           enabled: true
           servicemonitor:
-            enabled: true
+            enabled: false  # Prometheus Operator not installed until monitoring app
   destination:
     server: https://kubernetes.default.svc
     namespace: cert-manager
@@ -56,8 +56,6 @@ metadata:
   namespace: argocd
   labels:
     infra.platform/git-source: "true"
-  annotations:
-    argocd.argoproj.io/sync-wave: "1"
   finalizers:
     - resources-finalizer.argocd.argoproj.io
 spec:
@@ -75,9 +73,6 @@ spec:
       selfHeal: true
     syncOptions:
       - CreateNamespace=true
-  dependsOn:
-    - name: cert-manager
-      namespace: argocd
 ---
 # -----------------------------------------------------------------------------
 # istio-base — Istio CRDs and cluster-wide foundations
@@ -88,8 +83,6 @@ kind: Application
 metadata:
   name: istio-base
   namespace: argocd
-  annotations:
-    argocd.argoproj.io/sync-wave: "2"
   finalizers:
     - resources-finalizer.argocd.argoproj.io
 spec:
@@ -97,6 +90,7 @@ spec:
   source:
     repoURL: https://istio-release.storage.googleapis.com/charts
     chart: base
+    targetRevision: '*'
     helm:
       releaseName: istio-base
       values: |
@@ -112,17 +106,63 @@ spec:
       - CreateNamespace=true
 ---
 # -----------------------------------------------------------------------------
+# istio-csr — cert-manager integration for Istio TLS
+# -----------------------------------------------------------------------------
+# Must install before istiod (cert-manager docs: istio-csr before Istio).
+# Issues istiod's serving certificate from platform-ca-issuer for a unified
+# trust chain across the production mesh.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: istio-csr
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  source:
+    repoURL: https://charts.jetstack.io
+    chart: cert-manager-istio-csr
+    targetRevision: '*'
+    helm:
+      releaseName: istio-csr
+      values: |
+        app:
+          certmanager:
+            namespace: istio-system
+            issuer:
+              enabled: true
+              name: platform-ca-issuer
+              kind: ClusterIssuer
+              group: cert-manager.io
+          tls:
+            istiodCertificateEnable: true
+            istiodAdditionalDNSNames:
+              - istiod.istio-system.svc
+          istio:
+            namespace: istio-system
+            revisions:
+              - default
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: cert-manager
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+---
+# -----------------------------------------------------------------------------
 # istiod — Istio control plane (mesh brain)
 # -----------------------------------------------------------------------------
-# Runs the Istio discovery and configuration service. Production omits staging
-# Zipkin defaults to keep mesh config minimal; add tracing via meshConfig if needed.
+# Runs the Istio discovery and configuration service. Configured for cert-manager
+# istio-csr (built-in CA disabled). Production omits staging Zipkin defaults.
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
   name: istiod
   namespace: argocd
-  annotations:
-    argocd.argoproj.io/sync-wave: "3"
   finalizers:
     - resources-finalizer.argocd.argoproj.io
 spec:
@@ -130,11 +170,16 @@ spec:
   source:
     repoURL: https://istio-release.storage.googleapis.com/charts
     chart: istiod
+    targetRevision: '*'
     helm:
       releaseName: istiod
       values: |
         global:
           istioNamespace: istio-system
+          caAddress: cert-manager-istio-csr.cert-manager.svc:443
+        pilot:
+          env:
+            ENABLE_CA_SERVER: "false"
         meshConfig:
           enablePrometheusMerge: true
   destination:
@@ -146,57 +191,6 @@ spec:
       selfHeal: true
     syncOptions:
       - CreateNamespace=true
-  dependsOn:
-    - name: istio-base
-      namespace: argocd
----
-# -----------------------------------------------------------------------------
-# istio-csr — cert-manager integration for Istio TLS
-# -----------------------------------------------------------------------------
-# Issues istiod's serving certificate from platform-ca-issuer for a unified
-# trust chain across the production mesh.
-apiVersion: argoproj.io/v1alpha1
-kind: Application
-metadata:
-  name: istio-csr
-  namespace: argocd
-  annotations:
-    argocd.argoproj.io/sync-wave: "4"
-  finalizers:
-    - resources-finalizer.argocd.argoproj.io
-spec:
-  project: default
-  source:
-    repoURL: https://charts.jetstack.io
-    chart: cert-manager-istio-csr
-    helm:
-      releaseName: istio-csr
-      values: |
-        app:
-          issuer:
-            group: cert-manager.io
-            kind: ClusterIssuer
-            name: platform-ca-issuer
-        certificate:
-          dnsNames:
-            - istiod.istio-system.svc
-          mountNames:
-            istiodCert: istiod
-            rootCert: root-cert
-  destination:
-    server: https://kubernetes.default.svc
-    namespace: cert-manager
-  syncPolicy:
-    automated:
-      prune: true
-      selfHeal: true
-    syncOptions:
-      - CreateNamespace=true
-  dependsOn:
-    - name: platform-ca
-      namespace: argocd
-    - name: istiod
-      namespace: argocd
 ---
 # -----------------------------------------------------------------------------
 # istio-gateway — Ingress gateway (north-south traffic)
@@ -207,8 +201,6 @@ kind: Application
 metadata:
   name: istio-gateway
   namespace: argocd
-  annotations:
-    argocd.argoproj.io/sync-wave: "5"
   finalizers:
     - resources-finalizer.argocd.argoproj.io
 spec:
@@ -216,6 +208,7 @@ spec:
   source:
     repoURL: https://istio-release.storage.googleapis.com/charts
     chart: gateway
+    targetRevision: '*'
     helm:
       releaseName: istio-ingressgateway
       values: |
@@ -231,9 +224,6 @@ spec:
       selfHeal: true
     syncOptions:
       - CreateNamespace=true
-  dependsOn:
-    - name: istiod
-      namespace: argocd
 ---
 # -----------------------------------------------------------------------------
 # istio-ingress-tls — Gateway TLS certificate and HTTPS listener
@@ -245,8 +235,6 @@ metadata:
   namespace: argocd
   labels:
     infra.platform/git-source: "true"
-  annotations:
-    argocd.argoproj.io/sync-wave: "5"
   finalizers:
     - resources-finalizer.argocd.argoproj.io
 spec:
@@ -264,11 +252,6 @@ spec:
       selfHeal: true
     syncOptions:
       - CreateNamespace=true
-  dependsOn:
-    - name: platform-ca
-      namespace: argocd
-    - name: istio-gateway
-      namespace: argocd
 ---
 # -----------------------------------------------------------------------------
 # istio-policies — Mesh-wide security defaults (mTLS STRICT)
@@ -282,8 +265,6 @@ metadata:
   namespace: argocd
   labels:
     infra.platform/git-source: "true"
-  annotations:
-    argocd.argoproj.io/sync-wave: "6"
   finalizers:
     - resources-finalizer.argocd.argoproj.io
 spec:
@@ -299,9 +280,6 @@ spec:
     automated:
       prune: true
       selfHeal: true
-  dependsOn:
-    - name: istiod
-      namespace: argocd
 ---
 # -----------------------------------------------------------------------------
 # monitoring — Prometheus, Grafana, and Alertmanager
@@ -313,8 +291,6 @@ kind: Application
 metadata:
   name: monitoring
   namespace: argocd
-  annotations:
-    argocd.argoproj.io/sync-wave: "7"
   finalizers:
     - resources-finalizer.argocd.argoproj.io
 spec:
@@ -322,6 +298,7 @@ spec:
   source:
     repoURL: https://prometheus-community.github.io/helm-charts
     chart: kube-prometheus-stack
+    targetRevision: '*'
     helm:
       releaseName: kube-prometheus-stack
       values: |
@@ -387,8 +364,6 @@ metadata:
   namespace: argocd
   labels:
     infra.platform/git-source: "true"
-  annotations:
-    argocd.argoproj.io/sync-wave: "7"
   finalizers:
     - resources-finalizer.argocd.argoproj.io
 spec:
@@ -406,9 +381,6 @@ spec:
       selfHeal: true
     syncOptions:
       - CreateNamespace=true
-  dependsOn:
-    - name: monitoring
-      namespace: argocd
 ---
 # -----------------------------------------------------------------------------
 # kyverno — Policy engine for cluster guardrails
@@ -419,8 +391,6 @@ kind: Application
 metadata:
   name: kyverno
   namespace: argocd
-  annotations:
-    argocd.argoproj.io/sync-wave: "8"
   finalizers:
     - resources-finalizer.argocd.argoproj.io
 spec:
@@ -428,6 +398,7 @@ spec:
   source:
     repoURL: https://kyverno.github.io/kyverno
     chart: kyverno
+    targetRevision: '*'
     helm:
       releaseName: kyverno
   destination:
@@ -453,8 +424,6 @@ metadata:
   namespace: argocd
   labels:
     infra.platform/git-source: "true"
-  annotations:
-    argocd.argoproj.io/sync-wave: "8"
   finalizers:
     - resources-finalizer.argocd.argoproj.io
 spec:
@@ -469,9 +438,6 @@ spec:
     automated:
       prune: true
       selfHeal: true
-  dependsOn:
-    - name: kyverno
-      namespace: argocd
 ---
 # -----------------------------------------------------------------------------
 # mtls-demo — Sample app to verify mTLS in production
@@ -485,8 +451,6 @@ metadata:
   namespace: argocd
   labels:
     infra.platform/git-source: "true"
-  annotations:
-    argocd.argoproj.io/sync-wave: "9"
   finalizers:
     - resources-finalizer.argocd.argoproj.io
 spec:
@@ -504,6 +468,3 @@ spec:
       selfHeal: true
     syncOptions:
       - CreateNamespace=true
-  dependsOn:
-    - name: istio-policies
-      namespace: argocd
