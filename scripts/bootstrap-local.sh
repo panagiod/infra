@@ -158,7 +158,12 @@ app_is_ready() {
   sync="$(kubectl -n argocd get application "${app}" -o jsonpath='{.status.sync.status}' 2>/dev/null || true)"
   health="$(kubectl -n argocd get application "${app}" -o jsonpath='{.status.health.status}' 2>/dev/null || true)"
   phase="$(kubectl -n argocd get application "${app}" -o jsonpath='{.status.operationState.phase}' 2>/dev/null || true)"
+  local comparison_err
+  comparison_err="$(kubectl -n argocd get application "${app}" -o jsonpath='{.status.conditions[?(@.type=="ComparisonError")].message}' 2>/dev/null || true)"
 
+  if [[ -n "${comparison_err}" ]]; then
+    return 1
+  fi
   if [[ "${health}" != "Healthy" ]]; then
     return 1
   fi

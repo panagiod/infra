@@ -171,16 +171,21 @@ spec:
       releaseName: istio-csr
       values: |
         app:
-          issuer:
-            group: cert-manager.io
-            kind: ClusterIssuer
-            name: platform-ca-issuer  # Our cluster-wide CA from platform-ca app
-        certificate:
-          dnsNames:
-            - istiod.istio-system.svc  # SAN on the cert istiod presents
-          mountNames:
-            istiodCert: istiod   # Secret name for istiod's serving cert
-            rootCert: root-cert  # Secret name for the mesh root CA bundle
+          certmanager:
+            namespace: istio-system
+            issuer:
+              enabled: true
+              name: platform-ca-issuer  # Our cluster-wide CA from platform-ca app
+              kind: ClusterIssuer
+              group: cert-manager.io
+          tls:
+            istiodCertificateEnable: true
+            istiodAdditionalDNSNames:
+              - istiod.istio-system.svc  # SAN on the cert istiod presents
+          istio:
+            namespace: istio-system
+            revisions:
+              - default
   destination:
     server: https://kubernetes.default.svc
     namespace: cert-manager
