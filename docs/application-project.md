@@ -88,6 +88,27 @@ images:
 
 Commit and push to `main`.
 
+## Granting the Cloud Agent access (no terminal)
+
+The agent can write to **infra** but not **myapp** until you grant access in the GitHub UI:
+
+### Option A — Collaborator (simplest)
+
+1. Open https://github.com/panagiod/myapp/settings/access  
+2. **Add people** → invite **`cursor[bot]`** with **Write** role  
+3. Tell the agent **“try again”** — it will push fixes without you running commands  
+
+### Option B — Infra workflow (no collaborator)
+
+1. Create a fine-grained PAT: **myapp** repo only, **Contents: Read and write**  
+2. Add it to **infra** → Settings → Secrets → Actions → name **`MYAPP_REPO_TOKEN`**  
+3. Run **Actions → Sync myapp scaffold → Run workflow** on `panagiod/infra`  
+
+### You do not need to fix myapp for the cluster
+
+Deploy manifests for the running workload live in **infra** (`gitops/apps/myapp/` — see PR #20).  
+The `myapp` repo is for **application source code** only; `OWNER/REPO` placeholders there do not affect the platform until you switch the Argo source to the app repo.
+
 ## Step 4 — Register with Argo CD (infra repo)
 
 **Current setup:** deploy manifests for `myapp` live in **infra** at `gitops/apps/myapp/`. Application **source code** stays in `panagiod/myapp`. The Argo CD `Application` CR is in `gitops/clusters/*/applications.yaml` (after `mtls-demo`).
