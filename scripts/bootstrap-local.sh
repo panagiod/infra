@@ -212,8 +212,16 @@ wait_for_single_app() {
   # keep literal "auto" until recreated. Rollout after istiod wave ensures injection.
   if [[ "${app}" == "istio-gateway" ]]; then
     if kubectl -n istio-system get deploy istio-ingressgateway >/dev/null 2>&1; then
-      log "Rolling out istio-ingressgateway (refresh pods after istiod injector is ready)"
-      kubectl -n istio-system rollout restart deploy/istio-ingressgateway
+      local pilot_image proxy_image
+      pilot_image="$(kubectl -n istio-system get deploy istiod -o jsonpath='{.spec.template.spec.containers[?(@.name=="discovery")].image}' 2>/dev/null || true)"
+      if [[ -n "${pilot_image}" ]]; then
+        proxy_image="${pilot_image/pilot/proxyv2}"
+        log "Setting istio-ingressgateway proxy image from istiod: ${proxy_image}"
+        kubectl -n istio-system set image deployment/istio-ingressgateway istio-proxy="${proxy_image}"
+      else
+        log "Rolling out istio-ingressgateway (istiod image not found; rely on injector)"
+        kubectl -n istio-system rollout restart deploy/istio-ingressgateway
+      fi
     fi
   fi
   log "Waiting for Application: ${app} (timeout ${timeout}s)"
