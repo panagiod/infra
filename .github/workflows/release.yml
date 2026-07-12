@@ -1,0 +1,76 @@
+# Promote a validated main revision to production via immutable Git tag + GHCR image.
+name: Release to production
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Semver release (e.g. 1.0.0 — tag will be v1.0.0)'
+        required: true
+        type: string
+
+permissions:
+  contents: write
+  packages: write
+
+env:
+  IMAGE: ghcr.io/panagiod/infra/kubeship
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Validate version format
+        run: |
+          VERSION="${{ github.event.inputs.version }}"
+          if ! [[ "${VERSION}" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "Version must be semver X.Y.Z (got ${VERSION})"
+            exit 1
+          fi
+          if git rev-parse "v${VERSION}" >/dev/null 2>&1; then
+            echo "Tag v${VERSION} already exists"
+            exit 1
+          fi
+          echo "VERSION=${VERSION}" >> "${GITHUB_ENV}"
+          echo "TAG=v${VERSION}" >> "${GITHUB_ENV}"
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push production image
+        uses: docker/build-push-action@v6
+        with:
+          context: apps/kubeship
+          push: true
+          tags: |
+            ${{ env.IMAGE }}:v${{ env.VERSION }}
+            ${{ env.IMAGE }}:${{ env.VERSION }}
+
+      - name: Bump prod GitOps revision and image tag
+        run: |
+          PROD_ENV="gitops/clusters/prod/cluster.env"
+          PROD_KUST="gitops/apps/kubeship/overlays/prod/kustomization.yaml"
+          sed -i "s|^GITOPS_TARGET_REVISION=.*|GITOPS_TARGET_REVISION=${TAG}|" "${PROD_ENV}"
+          sed -i "/newName: ghcr.io\/panagiod\/infra\/kubeship/,+1 s|newTag:.*|newTag: v${VERSION}|" "${PROD_KUST}"
+
+      - name: Commit, tag, and push
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add gitops/clusters/prod/cluster.env gitops/apps/kubeship/overlays/prod/kustomization.yaml
+          git commit -m "release: promote production to ${TAG}"
+          git pull --rebase origin main
+          git tag "${TAG}"
+          git push origin main
+          git push origin "${TAG}"

@@ -97,7 +97,8 @@ jobs:
       - name: Build and load KubeShip image into kind
         run: |
           docker build -t kubeship:ci apps/kubeship
-          kind load docker-image kubeship:ci --name "${CLUSTER_NAME}"
+          docker tag kubeship:ci ghcr.io/panagiod/infra/kubeship:staging
+          kind load docker-image ghcr.io/panagiod/infra/kubeship:staging --name "${CLUSTER_NAME}"
 
       - name: Platform 1/12 — Install Argo CD
         run: BOOTSTRAP_PHASE=argocd ./scripts/bootstrap-local.sh

@@ -30,7 +30,16 @@
 
 ## Kind smoke
 
-CI builds `kubeship:ci` from `apps/kubeship/Dockerfile` and loads it into kind before bootstrap.
+CI builds `apps/kubeship/Dockerfile`, tags the image as `ghcr.io/panagiod/infra/kubeship:staging`, and loads it into kind before bootstrap (same tag staging cloud uses).
+
+## Delivery (staging → production)
+
+| Environment | Git revision | Image |
+|-------------|--------------|-------|
+| Staging | `main` | `ghcr.io/panagiod/infra/kubeship:staging` |
+| Production | tag `vX.Y.Z` | `ghcr.io/panagiod/infra/kubeship:vX.Y.Z` |
+
+See [delivery.md](delivery.md) for the full promotion workflow and release checklist.
 
 ## Credentials (staging lab)
 

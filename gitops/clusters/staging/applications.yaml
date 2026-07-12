@@ -590,7 +590,7 @@ spec:
   source:
     repoURL: https://github.com/panagiod/infra
     targetRevision: main
-    path: gitops/apps/kubeship/overlays/staging
+    path: gitops/apps/kubeship/overlays/cloud-staging
   destination:
     server: https://kubernetes.default.svc
     namespace: kubeship
