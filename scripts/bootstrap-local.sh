@@ -208,6 +208,14 @@ app_is_ready() {
 wait_for_single_app() {
   local app="$1"
   local timeout="${2:-${WAIT_TIMEOUT}}"
+  # Gateway chart uses image: auto; pods materialized before istiod/webhook are ready
+  # keep literal "auto" until recreated. Rollout after istiod wave ensures injection.
+  if [[ "${app}" == "istio-gateway" ]]; then
+    if kubectl -n istio-system get deploy istio-ingressgateway >/dev/null 2>&1; then
+      log "Rolling out istio-ingressgateway (refresh pods after istiod injector is ready)"
+      kubectl -n istio-system rollout restart deploy/istio-ingressgateway
+    fi
+  fi
   log "Waiting for Application: ${app} (timeout ${timeout}s)"
   local deadline=$((SECONDS + timeout))
 
