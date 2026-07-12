@@ -40,6 +40,9 @@ Wave 6: materialize istio-gateway + istio-policies (parallel wait)
 …
 ```
 
+`istio-policies` only targets **istio-system** (mesh control plane). App-namespace policies
+(e.g. `mtls-demo` PeerAuthentication) ship with their Application so namespaces exist first.
+
 ### Istio + cert-manager (istio-csr)
 
 Per [cert-manager istio-csr docs](https://cert-manager.io/docs/usage/istio-csr/):
