@@ -453,10 +453,101 @@ spec:
       selfHeal: true
 ---
 # -----------------------------------------------------------------------------
+# couchbase-config — Namespace and admin secret (before operator/cluster)
+# -----------------------------------------------------------------------------
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: couchbase-config
+  namespace: argocd
+  labels:
+    infra.platform/git-source: "true"
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/panagiod/infra
+    targetRevision: main
+    path: gitops/platform/couchbase/overlays/staging
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: couchbase
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+---
+# -----------------------------------------------------------------------------
+# couchbase — Couchbase Autonomous Operator + single-node cluster (staging)
+# -----------------------------------------------------------------------------
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: couchbase
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  source:
+    repoURL: https://couchbase-partners.github.io/helm-charts
+    chart: couchbase-operator
+    targetRevision: '*'
+    helm:
+      releaseName: couchbase
+      values: |
+        install:
+          couchbaseOperator: true
+          admissionController: true
+          couchbaseCluster: true
+          syncGateway: false
+        cluster:
+          antiAffinity: false
+          name: couchbase
+          security:
+            adminSecret: couchbase-admin-secret
+          cluster:
+            dataServiceMemoryQuota: 256Mi
+            indexServiceMemoryQuota: 256Mi
+            queryServiceMemoryQuota: 256Mi
+          servers:
+            default:
+              size: 1
+              services:
+                - data
+                - index
+                - query
+          volumeClaimTemplates:
+            - metadata:
+                name: data
+              spec:
+                storageClassName: standard
+                accessModes:
+                  - ReadWriteOnce
+                resources:
+                  requests:
+                    storage: 2Gi
+        buckets:
+          default: null
+          kubeship:
+            memoryQuota: 100Mi
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: couchbase
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true
+---
+# -----------------------------------------------------------------------------
 # mtls-demo — Sample app to verify mTLS and mesh policies
 # -----------------------------------------------------------------------------
-# Deploys frontend + backend in mtls-demo namespace (staging overlay). Used to
-# prove STRICT mTLS and authorization work before rolling patterns to real apps.
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
@@ -483,15 +574,12 @@ spec:
       - CreateNamespace=true
 ---
 # -----------------------------------------------------------------------------
-# myapp — Application workload (code in panagiod/myapp; deploy via infra GitOps)
+# kubeship — Shipping management API (Couchbase-backed)
 # -----------------------------------------------------------------------------
-# Deploy manifests live here until the app repo deploy/ overlay is corrected and
-# published to GHCR. Swap the Deployment image to ghcr.io/panagiod/myapp:<tag>
-# after the app repo release workflow runs.
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  name: myapp
+  name: kubeship
   namespace: argocd
   labels:
     infra.platform/git-source: "true"
@@ -502,10 +590,10 @@ spec:
   source:
     repoURL: https://github.com/panagiod/infra
     targetRevision: main
-    path: gitops/apps/myapp/overlays/staging
+    path: gitops/apps/kubeship/overlays/staging
   destination:
     server: https://kubernetes.default.svc
-    namespace: myapp
+    namespace: kubeship
   syncPolicy:
     automated:
       prune: true

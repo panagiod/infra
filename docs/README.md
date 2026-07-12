@@ -13,6 +13,7 @@
 | [quota-automation.md](quota-automation.md) | Auto-shutdown for Codespaces + CI quota guards |
 | [project-status.md](project-status.md) | What's complete, what's lab-only, what needs cloud |
 | [application-project.md](application-project.md) | Scaffold a separate app repo, GitHub Project, Argo CD wiring |
+| [kubeship.md](kubeship.md) | KubeShip shipping API (Couchbase-backed) |
 | [local-dev.md](local-dev.md) | No cloud budget — kind cluster in Docker |
 
 ## Bootstrap (create a cluster)

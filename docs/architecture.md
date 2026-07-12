@@ -56,7 +56,8 @@ Bootstrap order is documented here and enforced in **Kind smoke** by wave-by-wav
 | 7 | kube-prometheus-stack + alert rules | monitoring |
 | 8 | Kyverno policies | kyverno |
 | 9 | mtls-demo app | mtls-demo |
-| 10 | myapp application | myapp |
+| 10 | Couchbase (config + cluster) | couchbase |
+| 11 | KubeShip API | kubeship |
 
 ## Certificate flow
 

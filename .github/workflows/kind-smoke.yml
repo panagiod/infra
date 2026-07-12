@@ -22,6 +22,7 @@ on:
       - 'scripts/from-here.sh'
       - 'scripts/monitor-ci.sh'
       - 'docs/bootstrap.md'
+      - 'apps/kubeship/**'
       - '.github/workflows/kind-smoke.yml'
   workflow_dispatch:
     inputs:
@@ -93,7 +94,12 @@ jobs:
           fi
           kubectl apply -f hack/kind/metallb.yaml
 
-      - name: Platform 1/10 — Install Argo CD
+      - name: Build and load KubeShip image into kind
+        run: |
+          docker build -t kubeship:ci apps/kubeship
+          kind load docker-image kubeship:ci --name "${CLUSTER_NAME}"
+
+      - name: Platform 1/12 — Install Argo CD
         run: BOOTSTRAP_PHASE=argocd ./scripts/bootstrap-local.sh
 
       - name: Platform 2/10 — Wave 1 cert-manager
@@ -117,11 +123,17 @@ jobs:
       - name: Platform 8/10 — Wave 7 istio-ingress-tls, monitoring, kyverno
         run: WAIT_TIMEOUT=900 ./scripts/wait-for-apps.sh istio-ingress-tls monitoring kyverno
 
-      - name: Platform 9/10 — Wave 8 monitoring-alerts, platform-policies
+      - name: Platform 9/12 — Wave 8 monitoring-alerts, platform-policies
         run: WAIT_TIMEOUT=300 ./scripts/wait-for-apps.sh monitoring-alerts platform-policies
 
-      - name: Platform 10/10 — Wave 9 mtls-demo, myapp
-        run: WAIT_TIMEOUT=900 ./scripts/wait-for-apps.sh mtls-demo myapp
+      - name: Platform 10/12 — Wave 9 couchbase-config
+        run: WAIT_TIMEOUT=300 ./scripts/wait-for-app.sh couchbase-config
+
+      - name: Platform 11/12 — Wave 10 couchbase
+        run: WAIT_TIMEOUT=1200 ./scripts/wait-for-app.sh couchbase
+
+      - name: Platform 12/12 — Wave 11 mtls-demo, kubeship
+        run: WAIT_TIMEOUT=900 ./scripts/wait-for-apps.sh mtls-demo kubeship
 
       - name: Verify core platform health
         env:

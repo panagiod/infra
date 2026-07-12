@@ -440,10 +440,87 @@ spec:
       selfHeal: true
 ---
 # -----------------------------------------------------------------------------
+# couchbase-config — Namespace and admin secret
+# -----------------------------------------------------------------------------
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: couchbase-config
+  namespace: argocd
+  labels:
+    infra.platform/git-source: "true"
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/panagiod/infra
+    targetRevision: main
+    path: gitops/platform/couchbase/overlays/prod
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: couchbase
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+---
+# -----------------------------------------------------------------------------
+# couchbase — Couchbase cluster (production overlay values)
+# -----------------------------------------------------------------------------
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: couchbase
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  source:
+    repoURL: https://couchbase-partners.github.io/helm-charts
+    chart: couchbase-operator
+    targetRevision: '*'
+    helm:
+      releaseName: couchbase
+      values: |
+        install:
+          couchbaseOperator: true
+          admissionController: true
+          couchbaseCluster: true
+          syncGateway: false
+        cluster:
+          antiAffinity: true
+          name: couchbase
+          security:
+            adminSecret: couchbase-admin-secret
+          servers:
+            default:
+              size: 3
+              services:
+                - data
+                - index
+                - query
+        buckets:
+          default: null
+          kubeship:
+            memoryQuota: 256Mi
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: couchbase
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true
+---
+# -----------------------------------------------------------------------------
 # mtls-demo — Sample app to verify mTLS in production
 # -----------------------------------------------------------------------------
-# Production overlay scales frontend and backend to 2 replicas each. Validates
-# that mesh security policies work under slightly higher load than staging.
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
@@ -470,12 +547,12 @@ spec:
       - CreateNamespace=true
 ---
 # -----------------------------------------------------------------------------
-# myapp — Application workload (production overlay)
+# kubeship — Shipping management API (production)
 # -----------------------------------------------------------------------------
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  name: myapp
+  name: kubeship
   namespace: argocd
   labels:
     infra.platform/git-source: "true"
@@ -486,10 +563,10 @@ spec:
   source:
     repoURL: https://github.com/panagiod/infra
     targetRevision: main
-    path: gitops/apps/myapp/overlays/prod
+    path: gitops/apps/kubeship/overlays/prod
   destination:
     server: https://kubernetes.default.svc
-    namespace: myapp
+    namespace: kubeship
   syncPolicy:
     automated:
       prune: true
