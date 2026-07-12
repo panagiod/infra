@@ -50,10 +50,11 @@ Recreate the codespace for changes to apply.
 | Automation | Where | Effect |
 |------------|-------|--------|
 | **Ephemeral runners** | All workflows | VM destroyed when job ends — nothing stays running |
-| **Job timeout** | `kind-smoke.yml` | Hard stop after **45 minutes** |
+| **Job timeout** | `kind-smoke.yml` | Hard stop after **90 minutes** |
 | **Cancel duplicate runs** | `concurrency` on workflows | New push cancels in-progress run for same PR |
 | **Path filters** | Each workflow | Only runs when relevant files change |
-| **Explicit kind delete** | `kind-smoke.yml` cleanup step | `kind delete cluster` even if job fails |
+| **Kind cluster reuse** | `kind-smoke.yml` create step | Reuses `infra-local` if it already exists (faster reruns on same runner) |
+| **Kind delete on green only** | `kind-smoke.yml` cleanup step | `kind delete cluster` **only when the job succeeds** — failed runs keep the cluster for re-run / debug |
 
 ### What costs Actions minutes
 

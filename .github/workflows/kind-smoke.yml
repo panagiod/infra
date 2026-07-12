@@ -42,22 +42,42 @@ jobs:
         with:
           ref: ${{ github.event.inputs.gitops_revision || github.head_ref || github.ref }}
 
-      - uses: helm/kind-action@v1
-        with:
-          cluster_name: infra-local
-          config: hack/kind/cluster.yaml
-
       - uses: azure/setup-kubectl@v4
 
       - uses: azure/setup-helm@v4
+
+      - name: Install kind
+        run: |
+          KIND_VERSION="$(curl -fsSL https://api.github.com/repos/kubernetes-sigs/kind/releases/latest | grep '"tag_name"' | head -1 | sed -E 's/.*"v([^"]+)".*/\1/')"
+          curl -fsSL "https://kind.sigs.k8s.io/dl/v${KIND_VERSION}/kind-linux-amd64" -o /tmp/kind
+          chmod +x /tmp/kind
+          sudo mv /tmp/kind /usr/local/bin/kind
+          kind version
+
+      - name: Create or reuse kind cluster
+        run: |
+          if kind get clusters 2>/dev/null | grep -qx "${CLUSTER_NAME}"; then
+            echo "Reusing existing kind cluster ${CLUSTER_NAME} (skip create — faster reruns)"
+            kubectl config use-context "kind-${CLUSTER_NAME}"
+          else
+            kind create cluster --name "${CLUSTER_NAME}" --config hack/kind/cluster.yaml
+            kubectl config use-context "kind-${CLUSTER_NAME}"
+          fi
+          kubectl cluster-info
 
       - name: Prepare bootstrap scripts
         run: chmod +x scripts/bootstrap-local.sh scripts/wait-for-app.sh scripts/wait-for-apps.sh scripts/verify-platform.sh
 
       - name: Install MetalLB
         run: |
-          kubectl apply -f https://raw.githubusercontent.com/metallb/metallb/v0.14.9/config/manifests/metallb-native.yaml
-          kubectl -n metallb-system rollout status deploy/controller --timeout=180s
+          if kubectl get ns metallb-system >/dev/null 2>&1 \
+            && kubectl -n metallb-system get deploy/controller >/dev/null 2>&1; then
+            echo "MetalLB already installed — waiting for controller ready"
+            kubectl -n metallb-system rollout status deploy/controller --timeout=180s
+          else
+            kubectl apply -f https://raw.githubusercontent.com/metallb/metallb/v0.14.9/config/manifests/metallb-native.yaml
+            kubectl -n metallb-system rollout status deploy/controller --timeout=180s
+          fi
           kubectl apply -f hack/kind/metallb.yaml
 
       - name: Platform 1/11 — Install Argo CD
@@ -112,8 +132,8 @@ jobs:
           exit 1
 
       - name: Tear down kind cluster
-        if: always()
-        run: kind delete cluster --name infra-local || true
+        if: success()
+        run: kind delete cluster --name "${CLUSTER_NAME}" || true
 
   report-failure:
     needs: smoke
