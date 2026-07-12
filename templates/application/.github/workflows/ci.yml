@@ -1,0 +1,41 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Python smoke test
+        run: |
+          python3 -m py_compile src/app.py
+          python3 src/app.py &
+          pid=$!
+          sleep 1
+          curl -sf http://127.0.0.1:8080/health
+          kill "$pid"
+
+      - name: Install kubectl
+        uses: azure/setup-kubectl@v4
+
+      - name: Validate Kustomize overlays
+        run: |
+          kubectl kustomize deploy/base >/dev/null
+          kubectl kustomize deploy/overlays/staging >/dev/null
+          kubectl kustomize deploy/overlays/prod >/dev/null
+
+  docker-build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build image (no push on PR)
+        run: docker build -t myapp:ci .
