@@ -8,6 +8,7 @@ on:
       - 'hack/kind/**'
       - 'hack/argocd/**'
       - 'scripts/bootstrap-local.sh'
+      - 'scripts/ci-pod-diagnostics.sh'
       - 'scripts/wait-for-app.sh'
       - 'scripts/wait-for-apps.sh'
       - 'scripts/verify-platform.sh'
@@ -36,6 +37,7 @@ jobs:
       INSTALL_METALLB: "false"
       RECREATE_CLUSTER: "false"
       STRICT_WAIT: "true"
+      CI_POD_DIAGNOSTICS: "true"
       CLUSTER_ROOT_AUTOMATED_SYNC: "false"
     steps:
       - uses: actions/checkout@v4
@@ -66,7 +68,7 @@ jobs:
           kubectl cluster-info
 
       - name: Prepare bootstrap scripts
-        run: chmod +x scripts/bootstrap-local.sh scripts/wait-for-app.sh scripts/wait-for-apps.sh scripts/verify-platform.sh
+        run: chmod +x scripts/bootstrap-local.sh scripts/ci-pod-diagnostics.sh scripts/wait-for-app.sh scripts/wait-for-apps.sh scripts/verify-platform.sh
 
       - name: Install MetalLB
         run: |
@@ -95,11 +97,11 @@ jobs:
       - name: Platform 5/11 — Wave 3 istio-base
         run: WAIT_TIMEOUT=300 ./scripts/wait-for-app.sh istio-base
 
-      - name: Platform 6/11 — Wave 4 istiod
-        run: WAIT_TIMEOUT=600 ./scripts/wait-for-app.sh istiod
-
-      - name: Platform 7/11 — Wave 5 istio-csr
+      - name: Platform 6/11 — Wave 4 istio-csr
         run: WAIT_TIMEOUT=600 ./scripts/wait-for-app.sh istio-csr
+
+      - name: Platform 7/11 — Wave 5 istiod
+        run: WAIT_TIMEOUT=600 ./scripts/wait-for-app.sh istiod
 
       - name: Platform 8/11 — Wave 6 istio-gateway, istio-policies
         run: WAIT_TIMEOUT=600 ./scripts/wait-for-apps.sh istio-gateway istio-policies

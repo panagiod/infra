@@ -106,43 +106,9 @@ spec:
       - CreateNamespace=true
 ---
 # -----------------------------------------------------------------------------
-# istiod — Istio control plane (mesh brain)
-# -----------------------------------------------------------------------------
-# Runs the Istio discovery and configuration service. Production omits staging
-# Zipkin defaults to keep mesh config minimal; add tracing via meshConfig if needed.
-apiVersion: argoproj.io/v1alpha1
-kind: Application
-metadata:
-  name: istiod
-  namespace: argocd
-  finalizers:
-    - resources-finalizer.argocd.argoproj.io
-spec:
-  project: default
-  source:
-    repoURL: https://istio-release.storage.googleapis.com/charts
-    chart: istiod
-    targetRevision: '*'
-    helm:
-      releaseName: istiod
-      values: |
-        global:
-          istioNamespace: istio-system
-        meshConfig:
-          enablePrometheusMerge: true
-  destination:
-    server: https://kubernetes.default.svc
-    namespace: istio-system
-  syncPolicy:
-    automated:
-      prune: true
-      selfHeal: true
-    syncOptions:
-      - CreateNamespace=true
----
-# -----------------------------------------------------------------------------
 # istio-csr — cert-manager integration for Istio TLS
 # -----------------------------------------------------------------------------
+# Must install before istiod (cert-manager docs: istio-csr before Istio).
 # Issues istiod's serving certificate from platform-ca-issuer for a unified
 # trust chain across the production mesh.
 apiVersion: argoproj.io/v1alpha1
@@ -180,6 +146,66 @@ spec:
   destination:
     server: https://kubernetes.default.svc
     namespace: cert-manager
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+---
+# -----------------------------------------------------------------------------
+# istiod — Istio control plane (mesh brain)
+# -----------------------------------------------------------------------------
+# Runs the Istio discovery and configuration service. Configured for cert-manager
+# istio-csr (built-in CA disabled). Production omits staging Zipkin defaults.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: istiod
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  source:
+    repoURL: https://istio-release.storage.googleapis.com/charts
+    chart: istiod
+    targetRevision: '*'
+    helm:
+      releaseName: istiod
+      values: |
+        global:
+          istioNamespace: istio-system
+          caAddress: cert-manager-istio-csr.cert-manager.svc:443
+        pilot:
+          env:
+            ENABLE_CA_SERVER: "false"
+          extraContainerArgs:
+            - --tlsCertFile=/etc/cert-manager/tls/tls.crt
+            - --tlsKeyFile=/etc/cert-manager/tls/tls.key
+            - --caCertFile=/etc/cert-manager/ca/root-cert.pem
+          volumeMounts:
+            - name: cert-manager
+              mountPath: /etc/cert-manager/tls
+              readOnly: true
+            - name: istio-csr-ca-configmap
+              mountPath: /etc/cert-manager/ca
+              readOnly: true
+          volumes:
+            - name: cert-manager
+              secret:
+                secretName: istiod-tls
+                defaultMode: 420
+            - name: istio-csr-ca-configmap
+              configMap:
+                name: istio-ca-root-cert
+                defaultMode: 420
+                optional: true
+        meshConfig:
+          enablePrometheusMerge: true
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: istio-system
   syncPolicy:
     automated:
       prune: true

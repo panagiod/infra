@@ -231,6 +231,10 @@ wait_for_single_app() {
   warn "Timed out waiting for ${app}"
   log "Argo CD applications (debug)"
   kubectl -n argocd get applications -o wide || true
+  if [[ "${CI_POD_DIAGNOSTICS:-false}" == "true" ]]; then
+    log "Pod diagnostics for ${app} (CI_POD_DIAGNOSTICS=true)"
+    "${REPO_ROOT}/scripts/ci-pod-diagnostics.sh" "${app}" || true
+  fi
   if [[ "${STRICT_WAIT}" == "true" ]]; then
     exit 1
   fi

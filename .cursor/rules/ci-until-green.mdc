@@ -7,7 +7,7 @@ alwaysApply: true
 
 Unless the user explicitly opts out (e.g. "don't wait for CI", "status only", "stop fixing CI"), **always drive CI to green** after making or pushing changes.
 
-**Investigation and fix quality:** follow `ci-fix-gitops.mdc` — root-cause analysis first, GitOps-native fixes only, no workarounds.
+**Investigation and fix quality:** follow `ci-fix-gitops.mdc` — root-cause analysis first, GitOps-native fixes only, no workarounds. After two failures for the same step/symptom, follow `ci-pod-diagnostics.mdc` and read pod logs before the next fix.
 
 ## Default loop
 

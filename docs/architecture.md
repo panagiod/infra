@@ -49,8 +49,8 @@ Bootstrap order is documented here and enforced in **automated PR validation** (
 | 0 | cert-manager | cert-manager |
 | 1 | ClusterIssuer + mesh CA | cert-manager |
 | 2 | Istio base | istio-system |
-| 3 | istiod | istio-system |
-| 4 | istio-csr | cert-manager |
+| 3 | istio-csr | cert-manager |
+| 4 | istiod | istio-system |
 | 5 | Istio gateway + ingress TLS | istio-system |
 | 6 | PeerAuthentication STRICT default | istio-system |
 | 7 | kube-prometheus-stack + alert rules | monitoring |

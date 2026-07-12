@@ -7,7 +7,7 @@ alwaysApply: true
 
 When driving CI to green (see `ci-until-green.mdc`), **never patch symptoms to pass a check**. Every fix must be something we would ship to staging/prod GitOps, not a one-off for Actions.
 
-See also: `dependencies.mdc`, `git-workflow.mdc`, `docs/architecture.md`.
+See also: `dependencies.mdc`, `git-workflow.mdc`, `ci-pod-diagnostics.mdc`, `docs/architecture.md`.
 
 ## Investigate before changing anything
 
