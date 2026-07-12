@@ -12,6 +12,7 @@
 | [ci-only.md](ci-only.md) | **Option B** — contribute via PR + CI, no cluster |
 | [quota-automation.md](quota-automation.md) | Auto-shutdown for Codespaces + CI quota guards |
 | [project-status.md](project-status.md) | What's complete, what's lab-only, what needs cloud |
+| [application-project.md](application-project.md) | Scaffold a separate app repo, GitHub Project, Argo CD wiring |
 | [local-dev.md](local-dev.md) | No cloud budget — kind cluster in Docker |
 
 ## Bootstrap (create a cluster)
@@ -58,6 +59,7 @@
 | `scripts/start-lab.sh` | **Option A** — bootstrap + verify in one command |
 | `scripts/shutdown-lab.sh` | Destroy kind + optionally stop Codespace |
 | `scripts/ci-validate.sh` | **Option B** — run CI checks locally before push |
+| `scripts/scaffold-application-repo.sh` | Copy `templates/application/` into a new app repo directory |
 | `scripts/setup-github-oidc-aws.sh` | One-time AWS OIDC for CI plan |
 
 ## GitOps configuration
