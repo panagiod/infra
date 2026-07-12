@@ -33,7 +33,10 @@ spec:
     spec:
       containers:
         - name: backend
-          image: registry.k8s.io/e2e-test-images/echoserver:2.3  # HTTP echo on :8080 (official e2e image)
+          image: hashicorp/http-echo:0.2.3  # Minimal non-root HTTP server for mesh demos
+          args:
+            - "-listen=:8080"
+            - "-text=ok"
           ports:
             - containerPort: 8080
               name: http
@@ -45,10 +48,13 @@ spec:
               cpu: 200m
               memory: 128Mi
           securityContext:
-            allowPrivilegeEscalation: false  # Prevent container from gaining more privileges
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            runAsNonRoot: true
+            runAsUser: 65532
             capabilities:
               drop:
-                - ALL  # Drop all Linux capabilities for defense in depth
+                - ALL
 ---
 # Backend Service — stable DNS name "backend" inside the namespace for frontend curls.
 apiVersion: v1
