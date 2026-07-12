@@ -9,6 +9,11 @@ on:
       - 'scripts/bootstrap-local.sh'
       - 'scripts/verify-platform.sh'
       - '.github/workflows/kind-smoke.yml'
+  workflow_dispatch:
+    inputs:
+      gitops_revision:
+        description: 'Branch or tag to bootstrap (default: branch that triggered the run)'
+        required: false
 
 # Cancel an in-progress run when the same PR gets a new push (saves Actions minutes)
 concurrency:
@@ -21,6 +26,8 @@ jobs:
     timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.gitops_revision || github.head_ref || github.ref }}
 
       - uses: helm/kind-action@v1
         with:
@@ -40,7 +47,7 @@ jobs:
       - name: Bootstrap Argo CD and cluster-root
         env:
           GITOPS_REPO_URL: https://github.com/${{ github.repository }}
-          GITOPS_REVISION: ${{ github.head_ref || github.ref_name }}
+          GITOPS_REVISION: ${{ github.event.inputs.gitops_revision || github.head_ref || github.ref_name }}
           INSTALL_METALLB: "false"
           WAIT_TIMEOUT: "1200"
         run: |

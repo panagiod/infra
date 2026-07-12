@@ -7,6 +7,7 @@
 | Doc | Audience |
 |-----|----------|
 | [getting-started.md](getting-started.md) | Everyone — decision tree and golden paths |
+| [cloud-agent.md](cloud-agent.md) | **Default** — run everything via Cursor agent (`from-here.sh`) |
 | [codespaces.md](codespaces.md) | **Option A** — browser lab via GitHub Codespaces |
 | [ci-only.md](ci-only.md) | **Option B** — contribute via PR + CI, no cluster |
 | [quota-automation.md](quota-automation.md) | Auto-shutdown for Codespaces + CI quota guards |
@@ -51,6 +52,7 @@
 | `scripts/bootstrap-aws.sh` | AWS EKS staging/prod |
 | `scripts/bootstrap-azure.sh` | Azure AKS staging/prod |
 | `scripts/verify-platform.sh` | Post-bootstrap health checks |
+| `scripts/from-here.sh` | **Cloud Agent** — check, lab, push, status from Cursor |
 | `scripts/start-lab.sh` | **Option A** — bootstrap + verify in one command |
 | `scripts/shutdown-lab.sh` | Destroy kind + optionally stop Codespace |
 | `scripts/ci-validate.sh` | **Option B** — run CI checks locally before push |

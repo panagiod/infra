@@ -36,7 +36,22 @@ flowchart TD
 
 ---
 
-## Golden path: A + B (Codespaces lab + CI) — recommended
+## Golden path: from here (Cursor Cloud Agent) — recommended
+
+**No own machine.** Tell the agent what you want; it runs commands in this environment.
+
+| You ask | Agent runs |
+|---------|------------|
+| Check changes | `./scripts/from-here.sh check local` |
+| Run the lab | `./scripts/from-here.sh lab` (Kind smoke in GitHub Actions) |
+| Push / open PR | `./scripts/from-here.sh push` |
+| CI status | `./scripts/from-here.sh status` |
+
+Full guide: [cloud-agent.md](cloud-agent.md)
+
+---
+
+## Golden path: A + B (Codespaces lab + CI) — manual
 
 **No own machine.** Use Codespaces for hands-on work; CI validates every PR automatically.
 

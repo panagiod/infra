@@ -4,7 +4,9 @@ Multi-cloud Kubernetes platform (phase 1): **GitOps-managed** Istio mTLS, cert-m
 
 **New here?** → [docs/getting-started.md](docs/getting-started.md)
 
-**No own computer?** Use **Option A + B** → [docs/getting-started.md#golden-path-a--b-codespaces-lab--ci--recommended](docs/getting-started.md#golden-path-a--b-codespaces-lab--ci--recommended)
+**No own computer?** Work **through the Cursor agent** → [docs/cloud-agent.md](docs/cloud-agent.md) (`./scripts/from-here.sh`)
+
+Or use **Option A + B** manually → [getting-started.md](docs/getting-started.md)
 
 - **Option A (lab):** [docs/codespaces.md](docs/codespaces.md) — `./scripts/start-lab.sh`
 - **Option B (CI):** [docs/ci-only.md](docs/ci-only.md) — edit + PR, no cluster
