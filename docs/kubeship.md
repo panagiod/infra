@@ -6,9 +6,10 @@
 
 | Layer | Technology |
 |-------|------------|
-| API | FastAPI (`apps/kubeship/`) |
+| API | Go (`apps/kubeship/cmd/kubeship`) |
 | UI | Static console at `/` (`apps/kubeship/static/`) |
 | Database | Couchbase (`gitops/platform/couchbase/`) |
+| Ingress | Istio VirtualService (`gitops/apps/kubeship/base/ingress.yaml`) |
 | Deploy | Argo CD (`gitops/apps/kubeship/`) |
 | Mesh | Istio STRICT mTLS in `kubeship` namespace |
 
@@ -23,28 +24,44 @@
 | GET | `/api/v1/track/{tracking_number}` | Track by code |
 | PATCH | `/api/v1/shipments/{id}/status` | Update status (`{"status": "in_transit"}`) |
 
-## Web console
+## Public URL
 
-After deploy, open the KubeShip Service (or port-forward) at `/`:
+KubeShip is exposed on the platform Istio ingress gateway:
+
+| Environment | Public host |
+|-------------|-------------|
+| Staging | `https://kubeship.staging.gateway.example.com` (HTTP on port 80 in staging) |
+| Production | `https://kubeship.prod.gateway.example.com` |
+
+### Local kind / Codespaces
+
+After bootstrap, get the gateway LoadBalancer IP and map the host:
+
+```bash
+GW_IP=$(kubectl -n istio-system get svc istio-ingressgateway -o jsonpath='{.status.loadBalancer.ingress[0].ip}')
+echo "${GW_IP} kubeship.staging.gateway.example.com" | sudo tee -a /etc/hosts
+curl -sf http://kubeship.staging.gateway.example.com/health
+```
+
+Open **http://kubeship.staging.gateway.example.com** in a browser for the console.
+
+For cloud staging/prod, point DNS at the gateway LoadBalancer and replace `*.gateway.example.com` with your real domain in `cluster.env` / ingress overlays.
+
+### Port-forward (debug)
 
 ```bash
 kubectl -n kubeship port-forward svc/kubeship-api 8080:8080
 # http://localhost:8080
 ```
 
-The console supports creating shipments, tracking by code, viewing status history, and updating status.
-
 ## Sanity tests
 
-API and UI smoke tests run in CI without Couchbase (in-memory mock):
+API and UI smoke tests run in CI without Couchbase (in-memory store):
 
 ```bash
 cd apps/kubeship
-pip install -r requirements-dev.txt
-python3 -m pytest -q
+go test ./...
 ```
-
-Covers health, carriers, create → get → track → status update, validation errors, and static UI assets.
 
 ## Install order
 

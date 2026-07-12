@@ -7,6 +7,25 @@ resources:
 commonLabels:
   environment: prod
 
+configMapGenerator:
+  - name: kubeship-ingress
+    literals:
+      - PUBLIC_HOST=kubeship.prod.gateway.example.com
+    options:
+      disableNameSuffixHash: true
+
+replacements:
+  - source:
+      kind: ConfigMap
+      name: kubeship-ingress
+      fieldPath: data.PUBLIC_HOST
+    targets:
+      - select:
+          kind: VirtualService
+          name: kubeship-public
+        fieldPaths:
+          - spec.hosts.0
+
 images:
   - name: kubeship:ci
     newName: ghcr.io/panagiod/infra/kubeship

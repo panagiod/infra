@@ -1,23 +1,21 @@
-# KubeShip — shipping management API (FastAPI + Couchbase).
-FROM python:3.12-slim
+# KubeShip — shipping management API (Go + Couchbase).
+FROM golang:1.23-alpine AS build
 
-WORKDIR /app
+WORKDIR /src
+COPY go.mod go.sum ./
+RUN go mod download
 
-RUN pip install --no-cache-dir \
-    "couchbase>=4.3,<5" \
-    "fastapi>=0.115,<1" \
-    "uvicorn[standard]>=0.32,<1" \
-    "pydantic>=2.9,<3"
-
-COPY src/ ./src/
+COPY cmd/ ./cmd/
+COPY internal/ ./internal/
 COPY static/ ./static/
 
-ENV PORT=8080 \
-    PYTHONUNBUFFERED=1 \
-    PYTHONPATH=/app
+RUN CGO_ENABLED=0 GOOS=linux go build -trimpath -ldflags="-s -w" -o /kubeship ./cmd/kubeship
 
+FROM gcr.io/distroless/static-debian12:nonroot
+
+COPY --from=build /kubeship /kubeship
+
+ENV PORT=8080
 EXPOSE 8080
-
-USER 65532
-
-CMD ["uvicorn", "src.main:app", "--host", "0.0.0.0", "--port", "8080"]
+USER 65532:65532
+ENTRYPOINT ["/kubeship"]

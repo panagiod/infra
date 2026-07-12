@@ -24,16 +24,13 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-go@v5
         with:
-          python-version: '3.12'
-
-      - name: Install dependencies
-        run: |
-          pip install --quiet -r requirements-dev.txt
+          go-version: '1.23'
+          cache-dependency-path: apps/kubeship/go.sum
 
       - name: Run sanity tests
-        run: python3 -m pytest -q
+        run: go test ./...
 
-      - name: Syntax check
-        run: python3 -m py_compile src/main.py
+      - name: Verify build
+        run: go build -o /tmp/kubeship ./cmd/kubeship

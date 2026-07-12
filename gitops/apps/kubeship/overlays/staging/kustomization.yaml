@@ -6,3 +6,22 @@ resources:
 
 commonLabels:
   environment: staging
+
+configMapGenerator:
+  - name: kubeship-ingress
+    literals:
+      - PUBLIC_HOST=kubeship.staging.gateway.example.com
+    options:
+      disableNameSuffixHash: true
+
+replacements:
+  - source:
+      kind: ConfigMap
+      name: kubeship-ingress
+      fieldPath: data.PUBLIC_HOST
+    targets:
+      - select:
+          kind: VirtualService
+          name: kubeship-public
+        fieldPaths:
+          - spec.hosts.0

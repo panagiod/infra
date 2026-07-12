@@ -12,6 +12,9 @@ patches:
       - op: replace
         path: /spec/dnsNames/0
         value: staging.gateway.example.com
+      - op: add
+        path: /spec/dnsNames/-
+        value: kubeship.staging.gateway.example.com
   - target:
       kind: Gateway
       name: ingress-gateway
@@ -19,3 +22,15 @@ patches:
       - op: replace
         path: /spec/servers/0/hosts/0
         value: staging.gateway.example.com
+      - op: add
+        path: /spec/servers/0/hosts/-
+        value: kubeship.staging.gateway.example.com
+      - op: add
+        path: /spec/servers/-
+        value:
+          port:
+            number: 80
+            name: http-kubeship
+            protocol: HTTP
+          hosts:
+            - kubeship.staging.gateway.example.com
