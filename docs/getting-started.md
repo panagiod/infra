@@ -1,16 +1,23 @@
 # Getting started
 
-Choose your path based on what you have available. **No cloud account?** Start with [local development](local-dev.md) — it costs nothing.
+Choose your path based on what you have available.
+
+- **No own machine?** → [Codespaces](codespaces.md) (browser lab) or [CI-only](#golden-path-contribute-without-a-cluster) below
+- **Own machine, no cloud budget?** → [local development](local-dev.md)
+- **Cloud account?** → AWS or Azure paths below
 
 ## Which path should I use?
 
 ```mermaid
 flowchart TD
-  START([I want to run this platform]) --> Q1{Cloud budget?}
+  START([I want to run this platform]) --> Q0{Own computer?}
+  Q0 -->|No| CODESPACE[GitHub Codespaces]
+  Q0 -->|Yes| Q1{Cloud budget?}
   Q1 -->|No| LOCAL[Local kind cluster]
   Q1 -->|Yes| Q2{Which cloud?}
   Q2 --> AWS[AWS EKS]
   Q2 --> AZURE[Azure AKS]
+  CODESPACE --> GS0[See codespaces.md]
   LOCAL --> GS1[See golden path: Local below]
   AWS --> GS2[See golden path: AWS below]
   AZURE --> GS3[See golden path: Azure below]
@@ -18,7 +25,8 @@ flowchart TD
 
 | Situation | Start here |
 |-----------|------------|
-| No AWS/Azure account (or avoiding cost) | [local-dev.md](local-dev.md) |
+| No computer / browser only | [codespaces.md](codespaces.md) |
+| No AWS/Azure account (have Docker locally) | [local-dev.md](local-dev.md) |
 | AWS account + Terraform state | [QUICKSTART.md](QUICKSTART.md) |
 | Azure subscription + storage for state | [azure.md](azure.md) |
 | Understanding the design | [architecture.md](architecture.md) |

@@ -7,6 +7,7 @@
 | Doc | Audience |
 |-----|----------|
 | [getting-started.md](getting-started.md) | Everyone — decision tree and golden paths |
+| [codespaces.md](codespaces.md) | No own machine — browser lab via GitHub Codespaces |
 | [project-status.md](project-status.md) | What's complete, what's lab-only, what needs cloud |
 | [local-dev.md](local-dev.md) | No cloud budget — kind cluster in Docker |
 
