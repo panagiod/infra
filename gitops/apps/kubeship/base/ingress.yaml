@@ -1,0 +1,17 @@
+# Public ingress for KubeShip UI + API via the platform Istio gateway.
+apiVersion: networking.istio.io/v1
+kind: VirtualService
+metadata:
+  name: kubeship-public
+  namespace: kubeship
+spec:
+  hosts:
+    - kubeship.staging.gateway.example.com
+  gateways:
+    - istio-system/ingress-gateway
+  http:
+    - route:
+        - destination:
+            host: kubeship-api.kubeship.svc.cluster.local
+            port:
+              number: 8080

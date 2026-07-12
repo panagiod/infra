@@ -23,8 +23,11 @@ normalize_images() {
 import sys
 
 skip = {"auto", "pause", "placeholder"}
+# Monorepo images built in CI (kind-smoke / release workflow), not pulled from registry.
+ci_built_prefixes = ("ghcr.io/panagiod/infra/kubeship:",)
 raw = open(sys.argv[1], encoding="utf-8").read().splitlines()
 images = set()
+skipped = []
 for line in raw:
     img = line.strip().strip('"').strip("'")
     if not img or img in skip:
@@ -33,7 +36,13 @@ for line in raw:
         continue
     if "/" not in img:
         continue
+    if any(img.startswith(prefix) for prefix in ci_built_prefixes):
+        skipped.append(img)
+        continue
     images.add(img)
+
+for img in sorted(skipped):
+    print(f"SKIP {img} (built in CI — kind-smoke loads locally)", file=sys.stderr)
 
 for img in list(images):
     if img.startswith("registry.istio.io/release/pilot:"):

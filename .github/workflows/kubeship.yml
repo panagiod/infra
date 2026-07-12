@@ -1,0 +1,36 @@
+# KubeShip product sanity tests (no cluster required).
+name: KubeShip tests
+
+on:
+  pull_request:
+    paths:
+      - 'apps/kubeship/**'
+      - '.github/workflows/kubeship.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'apps/kubeship/**'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  sanity:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/kubeship
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.23'
+          cache-dependency-path: apps/kubeship/go.sum
+
+      - name: Run sanity tests
+        run: go test ./...
+
+      - name: Verify build
+        run: go build -o /tmp/kubeship ./cmd/kubeship

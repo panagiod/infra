@@ -1,0 +1,109 @@
+# KubeShip API — shipping management (Couchbase-backed).
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: kubeship
+  labels:
+    istio-injection: enabled
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: kubeship-couchbase
+  namespace: kubeship
+type: Opaque
+stringData:
+  username: Administrator
+  password: changeme-staging
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: kubeship-api
+  namespace: kubeship
+  labels:
+    app: kubeship-api
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: kubeship-api
+  template:
+    metadata:
+      labels:
+        app: kubeship-api
+    spec:
+      containers:
+        - name: kubeship-api
+          image: kubeship:ci
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: 8080
+          env:
+            - name: COUCHBASE_CONNECTION_STRING
+              value: couchbase://couchbase.couchbase.svc
+            - name: COUCHBASE_BUCKET
+              value: kubeship
+            - name: COUCHBASE_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: kubeship-couchbase
+                  key: username
+            - name: COUCHBASE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: kubeship-couchbase
+                  key: password
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            failureThreshold: 30
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 30
+            periodSeconds: 15
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              cpu: "1"
+              memory: 512Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            runAsNonRoot: true
+            runAsUser: 65532
+            capabilities:
+              drop:
+                - ALL
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: kubeship-api
+  namespace: kubeship
+  labels:
+    app: kubeship-api
+spec:
+  selector:
+    app: kubeship-api
+  ports:
+    - name: http
+      port: 8080
+      targetPort: http
+---
+apiVersion: security.istio.io/v1beta1
+kind: PeerAuthentication
+metadata:
+  name: default
+  namespace: kubeship
+spec:
+  mtls:
+    mode: STRICT

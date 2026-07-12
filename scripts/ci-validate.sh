@@ -106,8 +106,10 @@ validate_gitops() {
     gitops/platform/cert-manager/overlays/prod
     gitops/apps/mtls-demo/overlays/staging
     gitops/apps/mtls-demo/overlays/prod
-    gitops/apps/myapp/overlays/staging
-    gitops/apps/myapp/overlays/prod
+    gitops/apps/kubeship/overlays/cloud-staging
+    gitops/apps/kubeship/overlays/prod
+    gitops/platform/couchbase/overlays/staging
+    gitops/platform/couchbase/overlays/prod
     gitops/platform/istio/ingress-tls/overlays/staging
     gitops/platform/istio/ingress-tls/overlays/prod
     gitops/platform/monitoring/alerts
@@ -117,6 +119,17 @@ validate_gitops() {
     log "kustomize build ${path}"
     kustomize build "${REPO_ROOT}/${path}" >/dev/null
   done
+}
+
+validate_kubeship() {
+  should_run "${RUN_KUBESHIP:-auto}" "apps/kubeship/" || { log "Skipping KubeShip tests (no apps/kubeship/ changes vs ${CI_BASE_REF:-main})"; return 0; }
+  require_cmd go
+  log "KubeShip sanity tests"
+  (
+    cd "${REPO_ROOT}/apps/kubeship"
+    go test ./...
+    go build -o /dev/null ./cmd/kubeship
+  )
 }
 
 validate_terraform() {
@@ -144,6 +157,7 @@ main() {
   validate_gitops_logic
   validate_gitops
   validate_preflight
+  validate_kubeship
   validate_terraform
   log "All checks passed — safe to push and open a PR"
   printf '\nNext: git push origin <branch> → open PR → CI runs automatically\n'

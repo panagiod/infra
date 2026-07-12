@@ -13,6 +13,8 @@ GITOPS_INSTALL_ORDER=(
   monitoring-alerts
   kyverno
   platform-policies
+  couchbase-config
+  couchbase
   mtls-demo
-  myapp
+  kubeship
 )

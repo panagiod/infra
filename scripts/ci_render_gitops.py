@@ -17,6 +17,7 @@ REPO_MAP = {
     "https://prometheus-community.github.io/helm-charts": "prometheus-community",
     "https://kyverno.github.io/kyverno": "kyverno",
     "https://argoproj.github.io/argo-helm": "argo",
+    "https://couchbase-partners.github.io/helm-charts": "couchbase",
 }
 
 METALLB_URL = (

@@ -71,6 +71,12 @@ jobs:
       - name: Build mtls-demo prod overlay
         run: kustomize build gitops/apps/mtls-demo/overlays/prod
 
+      - name: Build kubeship cloud-staging overlay
+        run: kustomize build gitops/apps/kubeship/overlays/cloud-staging
+
+      - name: Build kubeship prod overlay
+        run: kustomize build gitops/apps/kubeship/overlays/prod
+
       - name: Build istio ingress TLS staging overlay
         run: kustomize build gitops/platform/istio/ingress-tls/overlays/staging
 

@@ -1,0 +1,38 @@
+# Build and publish KubeShip staging image on every merge to main.
+name: Build KubeShip staging
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'apps/kubeship/**'
+      - '.github/workflows/build-kubeship-staging.yml'
+
+permissions:
+  contents: read
+  packages: write
+
+env:
+  IMAGE: ghcr.io/panagiod/infra/kubeship
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push staging image
+        uses: docker/build-push-action@v6
+        with:
+          context: apps/kubeship
+          push: true
+          tags: |
+            ${{ env.IMAGE }}:staging
+            ${{ env.IMAGE }}:sha-${{ github.sha }}
