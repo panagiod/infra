@@ -33,7 +33,7 @@ spec:
     spec:
       containers:
         - name: backend
-          image: gcr.io/google-containers/echoserver:1.10  # Lightweight HTTP echo for demos
+          image: registry.k8s.io/google-containers/echoserver:1.10  # HTTP echo on :8080 (registry.k8s.io mirror)
           ports:
             - containerPort: 8080
               name: http

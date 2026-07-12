@@ -176,6 +176,12 @@ app_workload_ready() {
       available="$(kubectl -n istio-system get deploy istio-ingressgateway -o jsonpath='{.status.availableReplicas}' 2>/dev/null || echo 0)"
       [[ "${available:-0}" -ge 1 ]]
       ;;
+    mtls-demo)
+      local backend frontend
+      backend="$(kubectl -n mtls-demo get deploy backend -o jsonpath='{.status.availableReplicas}' 2>/dev/null || echo 0)"
+      frontend="$(kubectl -n mtls-demo get deploy frontend -o jsonpath='{.status.availableReplicas}' 2>/dev/null || echo 0)"
+      [[ "${backend:-0}" -ge 1 && "${frontend:-0}" -ge 1 ]]
+      ;;
     *)
       return 1
       ;;
@@ -194,7 +200,7 @@ app_is_ready() {
   if [[ -n "${comparison_err}" ]]; then
     return 1
   fi
-  # Ingress gateway: Argo app health can lag behind Deployment readiness (Service/LB aggregation).
+  # Synced apps whose Argo health lags behind Deployment readiness (gateway, demo workloads).
   if [[ "${sync}" == "Synced" && "${phase}" == "Succeeded" ]] && app_workload_ready "${app}"; then
     return 0
   fi
