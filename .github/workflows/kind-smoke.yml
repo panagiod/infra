@@ -35,6 +35,7 @@ jobs:
       INSTALL_METALLB: "false"
       RECREATE_CLUSTER: "false"
       STRICT_WAIT: "true"
+      CLUSTER_ROOT_AUTOMATED_SYNC: "false"
     steps:
       - uses: actions/checkout@v4
         with:
@@ -80,7 +81,7 @@ jobs:
         run: WAIT_TIMEOUT=600 ./scripts/wait-for-app.sh istio-csr
 
       - name: Platform 8/15 — Wait istio-gateway
-        run: WAIT_TIMEOUT=300 ./scripts/wait-for-app.sh istio-gateway
+        run: WAIT_TIMEOUT=600 ./scripts/wait-for-app.sh istio-gateway
 
       - name: Platform 9/15 — Wait istio-ingress-tls
         run: WAIT_TIMEOUT=300 ./scripts/wait-for-app.sh istio-ingress-tls

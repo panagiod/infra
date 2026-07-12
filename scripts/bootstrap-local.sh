@@ -13,6 +13,7 @@ WAIT_TIMEOUT="${WAIT_TIMEOUT:-900}"                   # seconds to wait for core
 STRICT_WAIT="${STRICT_WAIT:-false}"                   # exit 1 on wait timeout (CI)
 BOOTSTRAP_PHASE="${BOOTSTRAP_PHASE:-all}"             # all | argocd | cluster-root | wait
 WAIT_APP="${WAIT_APP:-}"                              # single app when BOOTSTRAP_PHASE=wait
+CLUSTER_ROOT_AUTOMATED_SYNC="${CLUSTER_ROOT_AUTOMATED_SYNC:-true}"  # false in Kind smoke (avoids overwriting materialized apps)
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 KIND_CONFIG="${REPO_ROOT}/hack/kind/cluster.yaml"
@@ -104,6 +105,21 @@ apply_cluster_root() {
   materialize_cluster_applications
 
   log "Registering cluster-root Application (gitops/clusters/${ENVIRONMENT})"
+  local sync_policy=""
+  if [[ "${CLUSTER_ROOT_AUTOMATED_SYNC}" == "true" ]]; then
+    sync_policy="  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true"
+  else
+    log "cluster-root automated sync disabled (child Applications managed via materialize + wait steps)"
+    sync_policy="  syncPolicy:
+    syncOptions:
+      - CreateNamespace=true"
+  fi
   kubectl apply -f - <<EOF
 apiVersion: argoproj.io/v1alpha1
 kind: Application
@@ -121,13 +137,7 @@ spec:
   destination:
     server: https://kubernetes.default.svc
     namespace: argocd
-  syncPolicy:
-    automated:
-      prune: true
-      selfHeal: true
-    syncOptions:
-      - CreateNamespace=true
-      - ServerSideApply=true
+${sync_policy}
 EOF
   kubectl -n argocd annotate application cluster-root argocd.argoproj.io/refresh=hard --overwrite >/dev/null 2>&1 || true
 }
@@ -152,6 +162,20 @@ app_status_line() {
   fi
 }
 
+app_workload_ready() {
+  local app="$1"
+  case "${app}" in
+    istio-gateway)
+      local available
+      available="$(kubectl -n istio-system get deploy istio-ingressgateway -o jsonpath='{.status.availableReplicas}' 2>/dev/null || echo 0)"
+      [[ "${available:-0}" -ge 1 ]]
+      ;;
+    *)
+      return 1
+      ;;
+  esac
+}
+
 app_is_ready() {
   local app="$1"
   local sync health phase
@@ -172,6 +196,10 @@ app_is_ready() {
   fi
   # Istio and other Helm charts may stay OutOfSync while Healthy (benign live diff).
   if [[ "${sync}" == "OutOfSync" && "${phase}" == "Succeeded" ]]; then
+    return 0
+  fi
+  # Gateway may stay Progressing in Argo while the Deployment is available (e.g. LB provisioning).
+  if [[ "${sync}" == "Synced" && "${phase}" == "Succeeded" ]] && app_workload_ready "${app}"; then
     return 0
   fi
   return 1
