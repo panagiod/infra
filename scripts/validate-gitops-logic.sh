@@ -39,8 +39,8 @@ for d in apps:
     if 'argocd.argoproj.io/sync-wave' in ann:
         errors.append(f'{name}: must not use sync-wave on Application CR (use dependsOn)')
     src = d.get('spec', {}).get('source', {})
-    if src.get('chart') and not src.get('targetRevision'):
-        errors.append(f'{name}: Helm chart {src["chart"]} missing targetRevision pin')
+    if src.get('chart') and src.get('targetRevision'):
+        errors.append(f'{name}: Helm chart {src["chart"]} must not pin targetRevision (latest stable per .cursor/rules/dependencies.mdc)')
     for dep in d.get('spec', {}).get('dependsOn') or []:
         dep_name = dep.get('name')
         if dep_name not in names:
@@ -72,7 +72,7 @@ if errors:
         print(f'  - {e}')
     sys.exit(1)
 
-print('NOTE: requires Argo CD v2.14+ (Application spec.dependsOn)')
+print('NOTE: runtime requires Argo CD with Application spec.dependsOn (shipped in current stable)')
 
 print(f'OK: {len(apps)} Applications, no sync-waves on Application CRs')
 print('Install order (dependsOn topological sort):')

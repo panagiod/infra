@@ -56,10 +56,18 @@ When a provider major version breaks config (e.g. Helm 3.x):
 source:
   repoURL: https://charts.jetstack.io
   chart: cert-manager
-  # no targetRevision — Argo resolves latest from the Helm index
+  # no targetRevision — Argo resolves latest stable from the Helm index
   helm:
     releaseName: cert-manager
 ```
+
+## Bootstrap (`scripts/bootstrap-local.sh`, `hack/argocd/`)
+
+| Do | Avoid |
+|----|--------|
+| `helm upgrade --install argo/argo-cd` with **no** `--version` | `ARGO_CD_CHART_VERSION`, `global.image.tag` pins in bootstrap values |
+| Verify `kubectl explain application.spec.dependsOn` after install | Pinning Argo CD to work around old CRDs — fix by using current stable |
+| Latest MetalLB manifest from upstream releases API when practical | Hardcoded manifest URLs unless upstream has no stable index |
 
 ## CI
 
@@ -82,5 +90,6 @@ Default: no pin.
 
 1. Did I add a version pin? If yes, is there a fix instead?
 2. Does CI use latest stable resolvers?
-3. Are GitOps Helm apps free of `targetRevision` pins?
+3. Are GitOps Helm apps free of `targetRevision` pins (including Argo CD bootstrap)?
 4. If validate/plan fails on latest, did I fix config rather than downgrade?
+5. Did I read `.cursor/rules/dependencies.mdc` before adding any `targetRevision`, `--version`, or image tag?

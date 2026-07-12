@@ -66,15 +66,13 @@ install_metallb() {
 }
 
 install_argocd() {
-  log "Installing Argo CD (v2.14+ required for spec.dependsOn)"
+  log "Installing Argo CD (latest stable chart; requires spec.dependsOn)"
   kubectl create namespace argocd --dry-run=client -o yaml | kubectl apply -f -
   helm repo add argo https://argoproj.github.io/argo-helm >/dev/null 2>&1 || true
   helm repo update argo
 
-  local chart_version="${ARGO_CD_CHART_VERSION:-7.7.18}"
   helm upgrade --install argocd argo/argo-cd \
     --namespace argocd \
-    --version "${chart_version}" \
     --values "${REPO_ROOT}/hack/argocd/bootstrap-values.yaml" \
     --wait --timeout 10m
 
