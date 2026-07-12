@@ -34,6 +34,25 @@ If you later use **Codespaces** (browser), `./scripts/start-lab.sh` runs the rea
 7. You: "Merge the PR" → agent merges
 ```
 
+## CI monitor / fix loop (event-driven)
+
+**Do not** poll Kind smoke for 90 minutes in chat. Use this instead:
+
+| Event | Command | What happens |
+|-------|---------|--------------|
+| After push | *(automatic)* | GitHub Actions runs; PR gets a **comment on Kind smoke failure** |
+| You want status | `./scripts/from-here.sh status` | One-shot check |
+| Waiting for green | `./scripts/from-here.sh monitor` | Polls until pass/fail (max 120m) |
+| CI failed | `./scripts/from-here.sh fix-ci` | Local validate + failed step + log tail |
+| Agent fix loop | You: **"fix CI until green"** | Agent runs fix-ci → patch → push → repeat |
+
+```text
+push → fast checks (ci-validate) → Kind smoke in Actions
+  → fail? PR comment with failed step
+  → agent: fix-ci → edit → push → status/monitor
+  → green → merge
+```
+
 ## Commands reference
 
 ```bash
@@ -42,6 +61,8 @@ If you later use **Codespaces** (browser), `./scripts/start-lab.sh` runs the rea
 ./scripts/from-here.sh lab                  # Kind smoke on current branch (Actions)
 ./scripts/from-here.sh lab feat/my-branch   # Kind smoke on another branch
 ./scripts/from-here.sh status               # PR + workflow run status
+./scripts/from-here.sh monitor              # poll until green or failure
+./scripts/from-here.sh fix-ci               # diagnose Kind smoke failure
 ./scripts/from-here.sh push                 # push branch + create PR
 ./scripts/from-here.sh shutdown             # noop here; Actions runners are ephemeral
 ```

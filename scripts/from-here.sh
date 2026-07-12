@@ -109,6 +109,63 @@ cmd_push() {
   cmd_status "${branch}"
 }
 
+cmd_monitor() {
+  require_gh
+  local branch="${1:-$(current_branch)}"
+  local pr
+  pr="$(gh pr view "${branch}" --json number -q .number 2>/dev/null || true)"
+  [[ -n "${pr}" ]] || die "No open PR for branch ${branch}"
+  "${REPO_ROOT}/scripts/monitor-ci.sh" "${branch}" "${pr}"
+}
+
+cmd_fix_ci() {
+  require_gh
+  local branch="${1:-$(current_branch)}"
+
+  log "Step 1/3 — fast local validation"
+  if ! "${REPO_ROOT}/scripts/ci-validate.sh"; then
+    log "Local validation failed — fix these before waiting on Kind smoke"
+    exit 2
+  fi
+
+  log "Step 2/3 — PR check status"
+  local smoke_state
+  smoke_state="$(gh pr checks "${branch}" 2>/dev/null | awk '/^smoke/{print $2; exit}')"
+  case "${smoke_state}" in
+    pass)
+      if gh pr checks "${branch}" 2>/dev/null | grep -qE '\tfail\t'; then
+        log "Kind smoke passed but other checks failed:"
+        gh pr checks "${branch}" 2>/dev/null | grep fail || true
+        exit 2
+      fi
+      log "CI is green on ${branch}"
+      gh pr checks "${branch}" 2>/dev/null
+      exit 0
+      ;;
+    pending|"")
+      log "Kind smoke still running — use: ./scripts/from-here.sh monitor"
+      cmd_status "${branch}"
+      exit 3
+      ;;
+    fail)
+      ;;
+    *)
+      log "Kind smoke state: ${smoke_state:-unknown}"
+      ;;
+  esac
+
+  log "Step 3/3 — failure report for agent/human"
+  local run_id failed_step
+  run_id="$(gh run list --branch="${branch}" --workflow=kind-smoke.yml --limit=1 --json databaseId -q '.[0].databaseId')"
+  [[ -n "${run_id}" && "${run_id}" != "null" ]] || die "No kind-smoke run found"
+  failed_step="$(gh run view "${run_id}" --json jobs --jq '[.jobs[].steps[] | select(.conclusion=="failure") | .name] | first' 2>/dev/null || echo unknown)"
+  log "Failed step: ${failed_step}"
+  log "Run: https://github.com/$(gh repo view --json nameWithOwner -q .nameWithOwner)/actions/runs/${run_id}"
+  log "Tail of failed logs:"
+  gh run view "${run_id}" --log-failed 2>/dev/null | tail -80 || true
+  exit 2
+}
+
 cmd_help() {
   cat <<'EOF'
 from-here.sh — run platform tasks from the Cursor Cloud Agent
@@ -120,6 +177,8 @@ Usage:
   ./scripts/from-here.sh check [local|remote] [branch]   CI validation
   ./scripts/from-here.sh lab [branch]                    Local kind OR remote Kind smoke
   ./scripts/from-here.sh status [branch]                 PR checks + recent runs
+  ./scripts/from-here.sh monitor [branch]                Poll until green or failure
+  ./scripts/from-here.sh fix-ci [branch]                 Diagnose failures (local + logs)
   ./scripts/from-here.sh push [branch]                   git push + open/update PR
   ./scripts/from-here.sh shutdown                          Tear down local lab if any
 
@@ -137,6 +196,8 @@ case "${CMD}" in
   lab) cmd_lab "$@" ;;
   shutdown) cmd_shutdown "$@" ;;
   status) cmd_status "$@" ;;
+  monitor) cmd_monitor "$@" ;;
+  fix-ci) cmd_fix_ci "$@" ;;
   push) cmd_push "$@" ;;
   help|-h|--help) cmd_help ;;
   *) die "Unknown command: ${CMD}. Run: from-here.sh help" ;;
