@@ -33,7 +33,7 @@ spec:
     spec:
       containers:
         - name: backend
-          image: registry.k8s.io/google-containers/echoserver:1.10  # HTTP echo on :8080 (registry.k8s.io mirror)
+          image: registry.k8s.io/e2e-test-images/echoserver:2.3  # HTTP echo on :8080 (official e2e image)
           ports:
             - containerPort: 8080
               name: http
