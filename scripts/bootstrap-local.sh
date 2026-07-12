@@ -77,14 +77,25 @@ install_argocd() {
     --wait --timeout 10m
 
   kubectl -n argocd rollout status deploy/argocd-server --timeout=300s
+  kubectl -n argocd rollout status deploy/argocd-repo-server --timeout=300s
+  kubectl -n argocd rollout status statefulset/argocd-application-controller --timeout=300s 2>/dev/null \
+    || kubectl -n argocd rollout status deploy/argocd-application-controller --timeout=300s
   log "Argo CD ready"
 }
 
 materialize_cluster_applications() {
   log "Materializing all Application CRs from gitops/clusters/${ENVIRONMENT}"
+  local cluster_dir="${REPO_ROOT}/gitops/clusters/${ENVIRONMENT}"
+  local build_dir
+  build_dir="$(mktemp -d)"
+  cp -a "${cluster_dir}/." "${build_dir}/"
+  # Git-sourced Applications read revision from cluster.env; align with GITOPS_REVISION (PR branch in CI).
+  sed -i "s|^GITOPS_TARGET_REVISION=.*|GITOPS_TARGET_REVISION=${GITOPS_REVISION}|" "${build_dir}/cluster.env"
+  sed -i "s|^GITOPS_REPO_URL=.*|GITOPS_REPO_URL=${GITOPS_REPO_URL}|" "${build_dir}/cluster.env"
   # Apply manifests directly so Kind smoke wait steps can observe each Application
   # while bootstrap order is enforced by sequential waits, not Argo CD dependsOn.
-  kustomize build "${REPO_ROOT}/gitops/clusters/${ENVIRONMENT}" | kubectl apply -f -
+  kustomize build "${build_dir}" | kubectl apply -f -
+  rm -rf "${build_dir}"
   kubectl -n argocd get applications -o wide || true
 }
 

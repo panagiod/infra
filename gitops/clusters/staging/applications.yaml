@@ -26,6 +26,7 @@ spec:
   source:
     repoURL: https://charts.jetstack.io
     chart: cert-manager
+    targetRevision: '*'
     helm:
       releaseName: cert-manager  # Name of the Helm release in the cluster
       values: |
@@ -93,6 +94,7 @@ spec:
   source:
     repoURL: https://istio-release.storage.googleapis.com/charts
     chart: base
+    targetRevision: '*'
     helm:
       releaseName: istio-base
       values: |
@@ -124,6 +126,7 @@ spec:
   source:
     repoURL: https://istio-release.storage.googleapis.com/charts
     chart: istiod
+    targetRevision: '*'
     helm:
       releaseName: istiod
       values: |
@@ -163,6 +166,7 @@ spec:
   source:
     repoURL: https://charts.jetstack.io
     chart: cert-manager-istio-csr
+    targetRevision: '*'
     helm:
       releaseName: istio-csr
       values: |
@@ -204,6 +208,7 @@ spec:
   source:
     repoURL: https://istio-release.storage.googleapis.com/charts
     chart: gateway
+    targetRevision: '*'
     helm:
       releaseName: istio-ingressgateway
       values: |
@@ -295,6 +300,7 @@ spec:
   source:
     repoURL: https://prometheus-community.github.io/helm-charts
     chart: kube-prometheus-stack
+    targetRevision: '*'
     helm:
       releaseName: kube-prometheus-stack
       values: |
@@ -393,6 +399,7 @@ spec:
   source:
     repoURL: https://kyverno.github.io/kyverno
     chart: kyverno
+    targetRevision: '*'
     helm:
       releaseName: kyverno
   destination:

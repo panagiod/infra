@@ -45,8 +45,11 @@ for d in apps:
     if 'argocd.argoproj.io/sync-wave' in ann:
         errors.append(f'{name}: must not use sync-wave on Application CR (use Kind smoke wait order)')
     src = d.get('spec', {}).get('source', {})
-    if src.get('chart') and src.get('targetRevision'):
-        errors.append(f'{name}: Helm chart {src["chart"]} must not pin targetRevision (latest stable per .cursor/rules/dependencies.mdc)')
+    tr = src.get('targetRevision')
+    if src.get('chart') and tr and tr not in ('*', 'x'):
+        errors.append(f'{name}: Helm chart {src["chart"]} must use targetRevision * or x for latest stable, not pin {tr!r} (.cursor/rules/dependencies.mdc)')
+    if src.get('chart') and not tr:
+        errors.append(f'{name}: Helm chart {src["chart"]} must set targetRevision: \'*\' (Argo CD requires explicit latest wildcard)')
     if d.get('spec', {}).get('dependsOn'):
         errors.append(f'{name}: must not use spec.dependsOn (not supported on Application CRD; use Kind smoke wait order)')
 
