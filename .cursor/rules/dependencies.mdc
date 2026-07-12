@@ -66,7 +66,7 @@ source:
 | Do | Avoid |
 |----|--------|
 | `helm upgrade --install argo/argo-cd` with **no** `--version` | `ARGO_CD_CHART_VERSION`, `global.image.tag` pins in bootstrap values |
-| Verify `kubectl explain application.spec.dependsOn` after install | Pinning Argo CD to work around old CRDs — fix by using current stable |
+| Rollout wait on `argocd-server` after install | Pinning Argo CD to work around old CRDs — fix by using current stable |
 | Latest MetalLB manifest from upstream releases API when practical | Hardcoded manifest URLs unless upstream has no stable index |
 
 ## CI

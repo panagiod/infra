@@ -3,7 +3,8 @@
 # =============================================================================
 # Same platform stack as staging, tuned for production: longer metric retention,
 # prod overlays for CA and demo app, and no staging-only tracing defaults.
-# spec.dependsOn ensures cert-manager → CA → Istio → policies → apps install safely.
+# Install order is enforced by automated PR validation wait steps (Kind smoke)
+# and operational runbooks — not Argo CD dependsOn.
 # =============================================================================
 
 # -----------------------------------------------------------------------------
@@ -71,9 +72,6 @@ spec:
       selfHeal: true
     syncOptions:
       - CreateNamespace=true
-  dependsOn:
-    - name: cert-manager
-      namespace: argocd
 ---
 # -----------------------------------------------------------------------------
 # istio-base — Istio CRDs and cluster-wide foundations
@@ -138,9 +136,6 @@ spec:
       selfHeal: true
     syncOptions:
       - CreateNamespace=true
-  dependsOn:
-    - name: istio-base
-      namespace: argocd
 ---
 # -----------------------------------------------------------------------------
 # istio-csr — cert-manager integration for Istio TLS
@@ -182,11 +177,6 @@ spec:
       selfHeal: true
     syncOptions:
       - CreateNamespace=true
-  dependsOn:
-    - name: platform-ca
-      namespace: argocd
-    - name: istiod
-      namespace: argocd
 ---
 # -----------------------------------------------------------------------------
 # istio-gateway — Ingress gateway (north-south traffic)
@@ -219,9 +209,6 @@ spec:
       selfHeal: true
     syncOptions:
       - CreateNamespace=true
-  dependsOn:
-    - name: istiod
-      namespace: argocd
 ---
 # -----------------------------------------------------------------------------
 # istio-ingress-tls — Gateway TLS certificate and HTTPS listener
@@ -250,11 +237,6 @@ spec:
       selfHeal: true
     syncOptions:
       - CreateNamespace=true
-  dependsOn:
-    - name: platform-ca
-      namespace: argocd
-    - name: istio-gateway
-      namespace: argocd
 ---
 # -----------------------------------------------------------------------------
 # istio-policies — Mesh-wide security defaults (mTLS STRICT)
@@ -283,9 +265,6 @@ spec:
     automated:
       prune: true
       selfHeal: true
-  dependsOn:
-    - name: istiod
-      namespace: argocd
 ---
 # -----------------------------------------------------------------------------
 # monitoring — Prometheus, Grafana, and Alertmanager
@@ -386,9 +365,6 @@ spec:
       selfHeal: true
     syncOptions:
       - CreateNamespace=true
-  dependsOn:
-    - name: monitoring
-      namespace: argocd
 ---
 # -----------------------------------------------------------------------------
 # kyverno — Policy engine for cluster guardrails
@@ -445,9 +421,6 @@ spec:
     automated:
       prune: true
       selfHeal: true
-  dependsOn:
-    - name: kyverno
-      namespace: argocd
 ---
 # -----------------------------------------------------------------------------
 # mtls-demo — Sample app to verify mTLS in production
@@ -478,6 +451,3 @@ spec:
       selfHeal: true
     syncOptions:
       - CreateNamespace=true
-  dependsOn:
-    - name: istio-policies
-      namespace: argocd

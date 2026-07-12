@@ -1,4 +1,4 @@
-# Argo CD values for local/kind bootstrap — latest stable chart; needs spec.dependsOn (Argo CD 2.14+).
+# Argo CD values for local/kind bootstrap — latest stable chart.
 configs:
   params:
     server.insecure: true

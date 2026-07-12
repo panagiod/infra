@@ -75,7 +75,7 @@ validate_scripts() {
 }
 
 validate_gitops_logic() {
-  log "Validating GitOps app-of-apps logic (dependsOn, no Application sync-waves)"
+  log "Validating GitOps app-of-apps logic (install order, no Application sync-waves)"
   for env in staging prod; do
     "${REPO_ROOT}/scripts/validate-gitops-logic.sh" "${env}"
   done
