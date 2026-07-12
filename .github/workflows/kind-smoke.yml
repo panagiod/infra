@@ -6,7 +6,9 @@ on:
     paths:
       - 'gitops/**'
       - 'hack/kind/**'
+      - 'hack/argocd/**'
       - 'scripts/bootstrap-local.sh'
+      - 'scripts/wait-for-app.sh'
       - 'scripts/verify-platform.sh'
       - '.github/workflows/kind-smoke.yml'
   workflow_dispatch:
@@ -23,7 +25,14 @@ concurrency:
 jobs:
   smoke:
     runs-on: ubuntu-latest
-    timeout-minutes: 60
+    timeout-minutes: 90
+    env:
+      GITOPS_REPO_URL: https://github.com/${{ github.repository }}
+      GITOPS_REVISION: ${{ github.event.inputs.gitops_revision || github.head_ref || github.ref_name }}
+      CLUSTER_NAME: infra-local
+      INSTALL_METALLB: "false"
+      RECREATE_CLUSTER: "false"
+      STRICT_WAIT: "true"
     steps:
       - uses: actions/checkout@v4
         with:
@@ -38,45 +47,76 @@ jobs:
 
       - uses: azure/setup-helm@v4
 
+      - name: Prepare bootstrap scripts
+        run: chmod +x scripts/bootstrap-local.sh scripts/wait-for-app.sh scripts/verify-platform.sh
+
       - name: Install MetalLB
         run: |
           kubectl apply -f https://raw.githubusercontent.com/metallb/metallb/v0.14.9/config/manifests/metallb-native.yaml
           kubectl -n metallb-system rollout status deploy/controller --timeout=180s
           kubectl apply -f hack/kind/metallb.yaml
 
-      - name: Bootstrap Argo CD and cluster-root
-        env:
-          GITOPS_REPO_URL: https://github.com/${{ github.repository }}
-          GITOPS_REVISION: ${{ github.event.inputs.gitops_revision || github.head_ref || github.ref_name }}
-          INSTALL_METALLB: "false"
-          WAIT_TIMEOUT: "1800"
-          STRICT_WAIT: "true"
-        run: |
-          chmod +x scripts/bootstrap-local.sh
-          # Cluster already created by kind-action — skip create, install platform shell
-          RECREATE_CLUSTER=false INSTALL_METALLB=false \
-            ./scripts/bootstrap-local.sh
+      - name: Platform 1/15 — Install Argo CD
+        run: BOOTSTRAP_PHASE=argocd ./scripts/bootstrap-local.sh
+
+      - name: Platform 2/15 — Register cluster-root Application
+        run: BOOTSTRAP_PHASE=cluster-root ./scripts/bootstrap-local.sh
+
+      - name: Platform 3/15 — Wait cert-manager
+        run: WAIT_TIMEOUT=600 ./scripts/wait-for-app.sh cert-manager
+
+      - name: Platform 4/15 — Wait platform-ca
+        run: WAIT_TIMEOUT=300 ./scripts/wait-for-app.sh platform-ca
+
+      - name: Platform 5/15 — Wait istio-base
+        run: WAIT_TIMEOUT=300 ./scripts/wait-for-app.sh istio-base
+
+      - name: Platform 6/15 — Wait istiod
+        run: WAIT_TIMEOUT=600 ./scripts/wait-for-app.sh istiod
+
+      - name: Platform 7/15 — Wait istio-csr
+        run: WAIT_TIMEOUT=600 ./scripts/wait-for-app.sh istio-csr
+
+      - name: Platform 8/15 — Wait istio-gateway
+        run: WAIT_TIMEOUT=300 ./scripts/wait-for-app.sh istio-gateway
+
+      - name: Platform 9/15 — Wait istio-ingress-tls
+        run: WAIT_TIMEOUT=300 ./scripts/wait-for-app.sh istio-ingress-tls
+
+      - name: Platform 10/15 — Wait istio-policies
+        run: WAIT_TIMEOUT=300 ./scripts/wait-for-app.sh istio-policies
+
+      - name: Platform 11/15 — Wait monitoring
+        run: WAIT_TIMEOUT=900 ./scripts/wait-for-app.sh monitoring
+
+      - name: Platform 12/15 — Wait monitoring-alerts
+        run: WAIT_TIMEOUT=300 ./scripts/wait-for-app.sh monitoring-alerts
+
+      - name: Platform 13/15 — Wait kyverno
+        run: WAIT_TIMEOUT=600 ./scripts/wait-for-app.sh kyverno
+
+      - name: Platform 14/15 — Wait platform-policies
+        run: WAIT_TIMEOUT=300 ./scripts/wait-for-app.sh platform-policies
+
+      - name: Platform 15/15 — Wait mtls-demo
+        run: WAIT_TIMEOUT=600 ./scripts/wait-for-app.sh mtls-demo
 
       - name: Verify core platform health
         env:
           LOCAL: "true"
-          CLUSTER_NAME: infra-local
         run: |
-          chmod +x scripts/verify-platform.sh
-          for attempt in $(seq 1 12); do
-            echo "Verify attempt ${attempt}/12"
+          for attempt in $(seq 1 6); do
+            echo "Verify attempt ${attempt}/6"
             if ./scripts/verify-platform.sh; then
               exit 0
             fi
-            if [[ "${attempt}" -lt 12 ]]; then
+            if [[ "${attempt}" -lt 6 ]]; then
               echo "Platform still syncing — retrying in 60s..."
               sleep 60
             fi
           done
           echo "--- Argo CD applications ---"
           kubectl -n argocd get applications -o wide || true
-          echo "--- cert-manager pods ---"
-          kubectl -n cert-manager get pods || true
           exit 1
 
       - name: Tear down kind cluster

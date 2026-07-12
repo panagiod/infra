@@ -11,6 +11,8 @@ RECREATE_CLUSTER="${RECREATE_CLUSTER:-false}"
 DESTROY="${DESTROY:-false}"
 WAIT_TIMEOUT="${WAIT_TIMEOUT:-900}"                   # seconds to wait for core apps
 STRICT_WAIT="${STRICT_WAIT:-false}"                   # exit 1 on wait timeout (CI)
+BOOTSTRAP_PHASE="${BOOTSTRAP_PHASE:-all}"             # all | argocd | cluster-root | wait
+WAIT_APP="${WAIT_APP:-}"                              # single app when BOOTSTRAP_PHASE=wait
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 KIND_CONFIG="${REPO_ROOT}/hack/kind/cluster.yaml"
@@ -126,37 +128,44 @@ app_status_line() {
   fi
 }
 
-wait_for_apps() {
-  log "Waiting for core Applications (timeout ${WAIT_TIMEOUT}s)"
-  local apps=(cert-manager platform-ca istiod mtls-demo)
-  local deadline=$((SECONDS + WAIT_TIMEOUT))
+wait_for_single_app() {
+  local app="$1"
+  local timeout="${2:-${WAIT_TIMEOUT}}"
+  log "Waiting for Application: ${app} (timeout ${timeout}s)"
+  local deadline=$((SECONDS + timeout))
 
-  for app in "${apps[@]}"; do
-    log "Waiting for Application: ${app}"
-    while (( SECONDS < deadline )); do
-      if kubectl -n argocd get application "${app}" >/dev/null 2>&1; then
-        local sync health
-        sync="$(kubectl -n argocd get application "${app}" -o jsonpath='{.status.sync.status}' 2>/dev/null || true)"
-        health="$(kubectl -n argocd get application "${app}" -o jsonpath='{.status.health.status}' 2>/dev/null || true)"
-        if [[ "${sync}" == "Synced" && "${health}" == "Healthy" ]]; then
-          log "${app}: Synced / Healthy"
-          break
-        fi
-        app_status_line "${app}"
-      else
-        app_status_line "${app}"
+  while (( SECONDS < deadline )); do
+    if kubectl -n argocd get application "${app}" >/dev/null 2>&1; then
+      local sync health
+      sync="$(kubectl -n argocd get application "${app}" -o jsonpath='{.status.sync.status}' 2>/dev/null || true)"
+      health="$(kubectl -n argocd get application "${app}" -o jsonpath='{.status.health.status}' 2>/dev/null || true)"
+      if [[ "${sync}" == "Synced" && "${health}" == "Healthy" ]]; then
+        log "${app}: Synced / Healthy"
+        kubectl -n argocd get application "${app}" -o wide || true
+        return 0
       fi
-      sleep 15
-    done
-    if (( SECONDS >= deadline )); then
-      warn "Timed out waiting for ${app} — platform may still be syncing"
-      if [[ "${STRICT_WAIT}" == "true" ]]; then
-        log "Argo CD applications (debug)"
-        kubectl -n argocd get applications -o wide || true
-        exit 1
-      fi
-      return 0
+      app_status_line "${app}"
+    else
+      app_status_line "${app}"
     fi
+    sleep 15
+  done
+
+  warn "Timed out waiting for ${app}"
+  log "Argo CD applications (debug)"
+  kubectl -n argocd get applications -o wide || true
+  if [[ "${STRICT_WAIT}" == "true" ]]; then
+    exit 1
+  fi
+  return 0
+}
+
+wait_for_apps() {
+  log "Waiting for core Applications (timeout ${WAIT_TIMEOUT}s each)"
+  local apps=(cert-manager platform-ca istiod mtls-demo)
+  local app
+  for app in "${apps[@]}"; do
+    wait_for_single_app "${app}" "${WAIT_TIMEOUT}"
   done
 }
 
@@ -172,19 +181,45 @@ print_access_hints() {
   printf '\nSee docs/local-dev.md and docs/verify.md for next steps.\n'
 }
 
+run_phase() {
+  case "${BOOTSTRAP_PHASE}" in
+    all)
+      check_prerequisites
+      create_cluster
+      install_metallb
+      install_argocd
+      apply_cluster_root
+      wait_for_apps
+      print_access_hints
+      ;;
+    argocd)
+      require_cmd kubectl
+      require_cmd helm
+      install_argocd
+      ;;
+    cluster-root)
+      require_cmd kubectl
+      apply_cluster_root
+      kubectl -n argocd get applications -o wide 2>/dev/null || true
+      ;;
+    wait)
+      require_cmd kubectl
+      [[ -n "${WAIT_APP}" ]] || die "WAIT_APP is required when BOOTSTRAP_PHASE=wait"
+      wait_for_single_app "${WAIT_APP}" "${WAIT_TIMEOUT}"
+      ;;
+    *)
+      die "Unknown BOOTSTRAP_PHASE: ${BOOTSTRAP_PHASE} (use all|argocd|cluster-root|wait)"
+      ;;
+  esac
+}
+
 main() {
   if [[ "${DESTROY}" == "true" ]]; then
     destroy_cluster
     exit 0
   fi
 
-  check_prerequisites
-  create_cluster
-  install_metallb
-  install_argocd
-  apply_cluster_root
-  wait_for_apps
-  print_access_hints
+  run_phase
 }
 
 main "$@"
