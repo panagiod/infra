@@ -4,7 +4,13 @@ Multi-cloud Kubernetes platform (phase 1): **GitOps-managed** Istio mTLS, cert-m
 
 **New here?** → [docs/getting-started.md](docs/getting-started.md)
 
+**No own computer?** → [docs/codespaces.md](docs/codespaces.md) (free GitHub Codespaces lab)
+
 ## Quick start (no cloud cost)
+
+**Codespaces (browser):** Code → Codespaces → Create codespace → `./scripts/bootstrap-local.sh`
+
+**Local Docker:**
 
 ```bash
 chmod +x scripts/bootstrap-local.sh
@@ -12,7 +18,7 @@ chmod +x scripts/bootstrap-local.sh
 LOCAL=true ./scripts/verify-platform.sh
 ```
 
-See [docs/local-dev.md](docs/local-dev.md).
+See [docs/local-dev.md](docs/local-dev.md) or [docs/codespaces.md](docs/codespaces.md).
 
 ## Quick start (cloud)
 
