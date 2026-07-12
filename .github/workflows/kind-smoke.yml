@@ -120,8 +120,8 @@ jobs:
       - name: Platform 9/10 — Wave 8 monitoring-alerts, platform-policies
         run: WAIT_TIMEOUT=300 ./scripts/wait-for-apps.sh monitoring-alerts platform-policies
 
-      - name: Platform 10/10 — Wave 9 mtls-demo
-        run: WAIT_TIMEOUT=600 ./scripts/wait-for-app.sh mtls-demo
+      - name: Platform 10/10 — Wave 9 mtls-demo, myapp
+        run: WAIT_TIMEOUT=900 ./scripts/wait-for-apps.sh mtls-demo myapp
 
       - name: Verify core platform health
         env:

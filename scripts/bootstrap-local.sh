@@ -183,6 +183,11 @@ app_workload_ready() {
       frontend="$(kubectl -n mtls-demo get deploy frontend -o jsonpath='{.status.availableReplicas}' 2>/dev/null || echo 0)"
       [[ "${backend:-0}" -ge 1 && "${frontend:-0}" -ge 1 ]]
       ;;
+    myapp)
+      local available
+      available="$(kubectl -n myapp get deploy myapp -o jsonpath='{.status.availableReplicas}' 2>/dev/null || echo 0)"
+      [[ "${available:-0}" -ge 1 ]]
+      ;;
     *)
       return 1
       ;;

@@ -106,6 +106,8 @@ validate_gitops() {
     gitops/platform/cert-manager/overlays/prod
     gitops/apps/mtls-demo/overlays/staging
     gitops/apps/mtls-demo/overlays/prod
+    gitops/apps/myapp/overlays/staging
+    gitops/apps/myapp/overlays/prod
     gitops/platform/istio/ingress-tls/overlays/staging
     gitops/platform/istio/ingress-tls/overlays/prod
     gitops/platform/monitoring/alerts
