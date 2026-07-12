@@ -7,6 +7,7 @@ on:
       - 'gitops/**'
       - 'hack/kind/**'
       - 'hack/argocd/**'
+      - 'scripts/ci-check-images.sh'
       - 'scripts/bootstrap-local.sh'
       - 'scripts/ci-pod-diagnostics.sh'
       - 'scripts/wait-for-app.sh'
@@ -47,6 +48,9 @@ jobs:
       - uses: azure/setup-kubectl@v4
 
       - uses: azure/setup-helm@v4
+
+      - name: Verify container images are pullable (preflight)
+        run: chmod +x scripts/ci-check-images.sh && ./scripts/ci-check-images.sh
 
       - name: Install kind
         run: |

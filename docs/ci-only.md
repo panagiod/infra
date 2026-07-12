@@ -57,6 +57,8 @@ Repeat edits on the same branch; each push re-runs CI.
 
 **Kind smoke is the slowest** — it only runs when GitOps-related files change. Docs-only PRs skip it.
 
+Kind smoke starts with **`scripts/ci-check-images.sh`**: it renders the same Helm/kustomize manifests as the bootstrap, then uses `crane manifest` to confirm every image exists **before** creating a kind cluster (~15s vs ~10+ minutes wasted on `ImagePullBackOff`).
+
 Plan workflows are **optional** until you configure OIDC — `terraform validate` still runs without cloud access.
 
 ---
@@ -74,7 +76,13 @@ Only checks what changed vs `main` by default:
 
 ```bash
 # Force all checks
-RUN_TERRAFORM=true RUN_GITOPS=true ./scripts/ci-validate.sh
+RUN_TERRAFORM=true RUN_GITOPS=true RUN_IMAGES=true ./scripts/ci-validate.sh
+```
+
+Image preflight alone (when changing container images in GitOps):
+
+```bash
+./scripts/ci-check-images.sh
 ```
 
 ---

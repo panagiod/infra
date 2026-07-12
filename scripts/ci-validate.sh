@@ -5,7 +5,7 @@ set -euo pipefail
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 RUN_TERRAFORM="${RUN_TERRAFORM:-auto}"   # auto | true | false
 RUN_GITOPS="${RUN_GITOPS:-auto}"         # auto | true | false
-RUN_SCRIPTS="${RUN_SCRIPTS:-true}"
+RUN_IMAGES="${RUN_IMAGES:-auto}"         # auto | true | false
 
 log() { printf '\n==> %s\n' "$*"; }
 die() { printf 'ERROR: %s\n' "$*" >&2; exit 1; }
@@ -81,6 +81,12 @@ validate_gitops_logic() {
   done
 }
 
+validate_images() {
+  should_run "${RUN_IMAGES}" "gitops/" || { log "Skipping image preflight (no gitops/ changes vs ${CI_BASE_REF:-main})"; return 0; }
+  log "Verifying Kind smoke container images are pullable"
+  "${REPO_ROOT}/scripts/ci-check-images.sh"
+}
+
 validate_gitops() {
   should_run "${RUN_GITOPS}" "gitops/" || { log "Skipping GitOps (no gitops/ changes vs ${CI_BASE_REF:-main})"; return 0; }
   install_kustomize_if_missing
@@ -127,6 +133,7 @@ main() {
   validate_scripts
   validate_gitops_logic
   validate_gitops
+  validate_images
   validate_terraform
   log "All checks passed — safe to push and open a PR"
   printf '\nNext: git push origin <branch> → open PR → CI runs automatically\n'
