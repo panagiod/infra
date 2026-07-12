@@ -10,6 +10,7 @@ RUN pip install --no-cache-dir \
     "pydantic>=2.9,<3"
 
 COPY src/ ./src/
+COPY static/ ./static/
 
 ENV PORT=8080 \
     PYTHONUNBUFFERED=1 \

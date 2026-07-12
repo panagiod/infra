@@ -28,5 +28,7 @@ secrets/
 # Build artifacts
 dist/
 build/
+__pycache__/
+*.pyc
 kustomize
 kustomize_v*_linux_amd64.tar.gz

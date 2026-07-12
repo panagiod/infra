@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>KubeShip — Shipping Console</title>
+  <link rel="stylesheet" href="/static/app.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <span class="brand-mark" aria-hidden="true">⛴</span>
+      <div>
+        <h1>KubeShip</h1>
+        <p class="tagline">Document shipping on Kubernetes</p>
+      </div>
+    </div>
+    <div class="health" id="health-pill" title="API health">checking…</div>
+  </header>
+
+  <main class="layout">
+    <section class="panel" aria-labelledby="create-heading">
+      <h2 id="create-heading">Create shipment</h2>
+      <form id="create-form" class="form-grid">
+        <fieldset>
+          <legend>Origin</legend>
+          <label>City <input name="origin_city" required placeholder="Limassol" /></label>
+          <label>Country <input name="origin_country" required maxlength="2" placeholder="CY" value="CY" /></label>
+        </fieldset>
+        <fieldset>
+          <legend>Destination</legend>
+          <label>City <input name="destination_city" required placeholder="Athens" /></label>
+          <label>Country <input name="destination_country" required maxlength="2" placeholder="GR" /></label>
+        </fieldset>
+        <label class="full">Carrier
+          <select name="carrier" id="carrier-select" required>
+            <option value="" disabled selected>Loading carriers…</option>
+          </select>
+        </label>
+        <label>Weight (kg)
+          <input name="weight_kg" type="number" min="0.1" step="0.1" required value="2.5" />
+        </label>
+        <button type="submit" class="btn primary full">Create shipment</button>
+      </form>
+    </section>
+
+    <section class="panel" aria-labelledby="track-heading">
+      <h2 id="track-heading">Track shipment</h2>
+      <form id="track-form" class="track-row">
+        <label class="grow">
+          Tracking number
+          <input name="tracking_number" id="track-input" required placeholder="KS-A1B2C3D4E5" />
+        </label>
+        <button type="submit" class="btn">Track</button>
+      </form>
+      <p class="hint">Use the tracking code returned when you create a shipment.</p>
+    </section>
+
+    <section class="panel shipment-panel hidden" id="shipment-panel" aria-live="polite">
+      <div class="shipment-header">
+        <div>
+          <h2>Shipment details</h2>
+          <p class="tracking" id="detail-tracking"></p>
+        </div>
+        <span class="status-badge" id="detail-status"></span>
+      </div>
+
+      <dl class="meta-grid" id="detail-meta"></dl>
+
+      <div class="timeline-block">
+        <h3>Status history</h3>
+        <ol class="timeline" id="detail-timeline"></ol>
+      </div>
+
+      <div class="actions-block">
+        <h3>Update status</h3>
+        <div class="status-actions" id="status-actions"></div>
+      </div>
+    </section>
+  </main>
+
+  <div class="toast hidden" id="toast" role="status"></div>
+
+  <script src="/static/app.js" type="module"></script>
+</body>
+</html>

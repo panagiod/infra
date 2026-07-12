@@ -8,12 +8,16 @@ from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 from typing import Any
 
+from pathlib import Path
+
 from couchbase.auth import PasswordAuthenticator
 from couchbase.cluster import Cluster
 from couchbase.exceptions import BucketAlreadyExistsException, DocumentExistsException
 from couchbase.management.buckets import BucketSettings
 from couchbase.options import ClusterOptions
 from fastapi import FastAPI, HTTPException
+from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
 BUCKET_NAME = os.environ.get("COUCHBASE_BUCKET", "kubeship")
@@ -54,6 +58,12 @@ class Shipment(ShipmentCreate):
     status_history: list[dict[str, str]]
     created_at: str
 
+
+class StatusUpdate(BaseModel):
+    status: str
+
+
+STATIC_DIR = Path(__file__).resolve().parent.parent / "static"
 
 def get_collection():
     if cluster is None:
@@ -97,6 +107,14 @@ async def lifespan(_: FastAPI):
 
 
 app = FastAPI(title="KubeShip", version="0.1.0", lifespan=lifespan)
+
+if STATIC_DIR.is_dir():
+    app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
+
+
+@app.get("/")
+def ui() -> FileResponse:
+    return FileResponse(STATIC_DIR / "index.html")
 
 
 @app.get("/health")
@@ -156,8 +174,9 @@ def track(code: str) -> Shipment:
 
 
 @app.patch("/api/v1/shipments/{shipment_id}/status", response_model=Shipment)
-def update_status(shipment_id: str, status: str) -> Shipment:
+def update_status(shipment_id: str, body: StatusUpdate) -> Shipment:
     allowed = {"created", "picked_up", "in_transit", "delivered", "cancelled"}
+    status = body.status
     if status not in allowed:
         raise HTTPException(status_code=400, detail=f"status must be one of {sorted(allowed)}")
 

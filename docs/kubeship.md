@@ -7,6 +7,7 @@
 | Layer | Technology |
 |-------|------------|
 | API | FastAPI (`apps/kubeship/`) |
+| UI | Static console at `/` (`apps/kubeship/static/`) |
 | Database | Couchbase (`gitops/platform/couchbase/`) |
 | Deploy | Argo CD (`gitops/apps/kubeship/`) |
 | Mesh | Istio STRICT mTLS in `kubeship` namespace |
@@ -20,7 +21,18 @@
 | POST | `/api/v1/shipments` | Create shipment |
 | GET | `/api/v1/shipments/{id}` | Get shipment |
 | GET | `/api/v1/track/{tracking_number}` | Track by code |
-| PATCH | `/api/v1/shipments/{id}/status` | Update status |
+| PATCH | `/api/v1/shipments/{id}/status` | Update status (`{"status": "in_transit"}`) |
+
+## Web console
+
+After deploy, open the KubeShip Service (or port-forward) at `/`:
+
+```bash
+kubectl -n kubeship port-forward svc/kubeship-api 8080:8080
+# http://localhost:8080
+```
+
+The console supports creating shipments, tracking by code, viewing status history, and updating status.
 
 ## Install order
 
