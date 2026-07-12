@@ -49,7 +49,8 @@
 | Script | Purpose |
 |--------|---------|
 | `scripts/bootstrap-local.sh` | kind + Argo CD + GitOps ($0); phases: `argocd`, `cluster-root`, `wait` |
-| `scripts/wait-for-app.sh` | Wait for one Argo CD Application (CI visibility) |
+| `scripts/wait-for-app.sh` | Wait for one Argo CD Application |
+| `scripts/wait-for-apps.sh` | Wait for a dependency wave (parallel apps, Kind smoke) |
 | `scripts/bootstrap-aws.sh` | AWS EKS staging/prod |
 | `scripts/bootstrap-azure.sh` | Azure AKS staging/prod |
 | `scripts/verify-platform.sh` | Post-bootstrap health checks |

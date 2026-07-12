@@ -9,6 +9,7 @@ on:
       - 'hack/argocd/**'
       - 'scripts/bootstrap-local.sh'
       - 'scripts/wait-for-app.sh'
+      - 'scripts/wait-for-apps.sh'
       - 'scripts/verify-platform.sh'
       - 'scripts/from-here.sh'
       - 'scripts/monitor-ci.sh'
@@ -51,7 +52,7 @@ jobs:
       - uses: azure/setup-helm@v4
 
       - name: Prepare bootstrap scripts
-        run: chmod +x scripts/bootstrap-local.sh scripts/wait-for-app.sh scripts/verify-platform.sh
+        run: chmod +x scripts/bootstrap-local.sh scripts/wait-for-app.sh scripts/wait-for-apps.sh scripts/verify-platform.sh
 
       - name: Install MetalLB
         run: |
@@ -59,49 +60,34 @@ jobs:
           kubectl -n metallb-system rollout status deploy/controller --timeout=180s
           kubectl apply -f hack/kind/metallb.yaml
 
-      - name: Platform 1/15 — Install Argo CD
+      - name: Platform 1/10 — Install Argo CD
         run: BOOTSTRAP_PHASE=argocd ./scripts/bootstrap-local.sh
 
-      - name: Platform 2/15 — Register cluster-root and materialize Applications
+      - name: Platform 2/10 — Register cluster-root and materialize Applications
         run: BOOTSTRAP_PHASE=cluster-root ./scripts/bootstrap-local.sh
 
-      - name: Platform 3/15 — Wait cert-manager
+      - name: Platform 3/10 — Wave 1 cert-manager
         run: WAIT_TIMEOUT=600 ./scripts/wait-for-app.sh cert-manager
 
-      - name: Platform 4/15 — Wait platform-ca
+      - name: Platform 4/10 — Wave 2 platform-ca
         run: WAIT_TIMEOUT=600 ./scripts/wait-for-app.sh platform-ca
 
-      - name: Platform 5/15 — Wait istio-base
+      - name: Platform 5/10 — Wave 3 istio-base
         run: WAIT_TIMEOUT=300 ./scripts/wait-for-app.sh istio-base
 
-      - name: Platform 6/15 — Wait istiod
+      - name: Platform 6/10 — Wave 4 istiod
         run: WAIT_TIMEOUT=600 ./scripts/wait-for-app.sh istiod
 
-      - name: Platform 7/15 — Wait istio-csr
-        run: WAIT_TIMEOUT=600 ./scripts/wait-for-app.sh istio-csr
+      - name: Platform 7/10 — Wave 5 istio-csr, istio-gateway, istio-policies
+        run: WAIT_TIMEOUT=600 ./scripts/wait-for-apps.sh istio-csr istio-gateway istio-policies
 
-      - name: Platform 8/15 — Wait istio-gateway
-        run: WAIT_TIMEOUT=600 ./scripts/wait-for-app.sh istio-gateway
+      - name: Platform 8/10 — Wave 6 istio-ingress-tls, monitoring, kyverno
+        run: WAIT_TIMEOUT=900 ./scripts/wait-for-apps.sh istio-ingress-tls monitoring kyverno
 
-      - name: Platform 9/15 — Wait istio-ingress-tls
-        run: WAIT_TIMEOUT=300 ./scripts/wait-for-app.sh istio-ingress-tls
+      - name: Platform 9/10 — Wave 7 monitoring-alerts, platform-policies
+        run: WAIT_TIMEOUT=300 ./scripts/wait-for-apps.sh monitoring-alerts platform-policies
 
-      - name: Platform 10/15 — Wait istio-policies
-        run: WAIT_TIMEOUT=300 ./scripts/wait-for-app.sh istio-policies
-
-      - name: Platform 11/15 — Wait monitoring
-        run: WAIT_TIMEOUT=900 ./scripts/wait-for-app.sh monitoring
-
-      - name: Platform 12/15 — Wait monitoring-alerts
-        run: WAIT_TIMEOUT=300 ./scripts/wait-for-app.sh monitoring-alerts
-
-      - name: Platform 13/15 — Wait kyverno
-        run: WAIT_TIMEOUT=600 ./scripts/wait-for-app.sh kyverno
-
-      - name: Platform 14/15 — Wait platform-policies
-        run: WAIT_TIMEOUT=300 ./scripts/wait-for-app.sh platform-policies
-
-      - name: Platform 15/15 — Wait mtls-demo
+      - name: Platform 10/10 — Wave 8 mtls-demo
         run: WAIT_TIMEOUT=600 ./scripts/wait-for-app.sh mtls-demo
 
       - name: Verify core platform health

@@ -225,7 +225,7 @@ wait_for_single_app() {
     else
       app_status_line "${app}"
     fi
-    sleep 15
+    sleep "${WAIT_POLL_INTERVAL:-5}"
   done
 
   warn "Timed out waiting for ${app}"
