@@ -10,6 +10,11 @@ on:
       - 'scripts/verify-platform.sh'
       - '.github/workflows/kind-smoke.yml'
 
+# Cancel an in-progress run when the same PR gets a new push (saves Actions minutes)
+concurrency:
+  group: kind-smoke-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 jobs:
   smoke:
     runs-on: ubuntu-latest
@@ -57,3 +62,7 @@ jobs:
             kubectl -n cert-manager get pods || true
             exit 1
           }
+
+      - name: Tear down kind cluster
+        if: always()
+        run: kind delete cluster --name infra-local || true

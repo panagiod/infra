@@ -32,10 +32,41 @@ flowchart TD
 | Understanding the design | [architecture.md](architecture.md) |
 | What's done vs what's lab-only | [project-status.md](project-status.md) |
 | After bootstrap — health checks | [verify.md](verify.md) |
+| Save quota (auto-shutdown) | [quota-automation.md](quota-automation.md) |
 
 ---
 
-## Golden path: local ($0)
+## Golden path: A + B (Codespaces lab + CI) — recommended
+
+**No own machine.** Use Codespaces for hands-on work; CI validates every PR automatically.
+
+### A — Start the lab (Codespaces)
+
+1. GitHub → **Code** → **Codespaces** → **Create codespace on main**
+2. Terminal:
+
+```bash
+./scripts/bootstrap-local.sh
+LOCAL=true ./scripts/verify-platform.sh
+```
+
+### B — Contribute (automatic on every PR)
+
+Edit files → open PR → CI runs (kustomize, kind-smoke, etc.). You don't start this — it happens when you open the PR.
+
+### Shutdown — save quota (important)
+
+```bash
+STOP_CODESPACE=true ./scripts/shutdown-lab.sh
+```
+
+**Automatic:** codespace stops after **15 min idle** or **2 h max**; kind cluster is deleted on stop.
+
+Details: [codespaces.md](codespaces.md) · [quota-automation.md](quota-automation.md)
+
+---
+
+## Golden path: local ($0, own machine)
 
 **Time:** ~15 minutes first sync (Docker + kind + full platform).
 

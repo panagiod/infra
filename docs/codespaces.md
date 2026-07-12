@@ -52,13 +52,29 @@ Codespaces builds from the branch you select when creating the codespace. To tes
 GITOPS_REVISION=feat/my-branch RECREATE_CLUSTER=true ./scripts/bootstrap-local.sh
 ```
 
-## Tear down
+## Tear down (save quota)
+
+**Recommended — destroy kind and stop the codespace:**
+
+```bash
+STOP_CODESPACE=true ./scripts/shutdown-lab.sh
+```
+
+**Kind only** (codespace keeps running — still uses quota):
 
 ```bash
 DESTROY=true ./scripts/bootstrap-local.sh
 ```
 
-Delete the codespace from GitHub when finished to stop billing/quota use.
+### Automatic shutdown (configured in `.devcontainer/`)
+
+| Trigger | When |
+|---------|------|
+| **Idle timeout** | 15 minutes with no activity |
+| **Max open duration** | 2 hours total |
+| **On stop** | kind cluster deleted + Docker pruned |
+
+Full details: [quota-automation.md](quota-automation.md)
 
 ## Known limitations
 

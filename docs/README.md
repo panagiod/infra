@@ -8,6 +8,7 @@
 |-----|----------|
 | [getting-started.md](getting-started.md) | Everyone — decision tree and golden paths |
 | [codespaces.md](codespaces.md) | No own machine — browser lab via GitHub Codespaces |
+| [quota-automation.md](quota-automation.md) | Auto-shutdown for Codespaces + CI quota guards |
 | [project-status.md](project-status.md) | What's complete, what's lab-only, what needs cloud |
 | [local-dev.md](local-dev.md) | No cloud budget — kind cluster in Docker |
 
@@ -49,6 +50,7 @@
 | `scripts/bootstrap-aws.sh` | AWS EKS staging/prod |
 | `scripts/bootstrap-azure.sh` | Azure AKS staging/prod |
 | `scripts/verify-platform.sh` | Post-bootstrap health checks |
+| `scripts/shutdown-lab.sh` | Destroy kind + optionally stop Codespace |
 | `scripts/setup-github-oidc-aws.sh` | One-time AWS OIDC for CI plan |
 
 ## GitOps configuration

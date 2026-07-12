@@ -30,10 +30,11 @@ cat <<'EOF'
 ║    kubectl -n argocd port-forward svc/argocd-server 8080:80 ║
 ║    → Ports tab → open localhost:8080                         ║
 ║                                                              ║
-║  Tear down:                                                  ║
-║    DESTROY=true ./scripts/bootstrap-local.sh                 ║
+║  Shutdown (save quota):                                      ║
+║    STOP_CODESPACE=true ./scripts/shutdown-lab.sh             ║
+║    Auto: 15 min idle stop · 2 h max open (devcontainer)      ║
 ║                                                              ║
-║  Docs: docs/codespaces.md · docs/getting-started.md          ║
+║  Docs: docs/codespaces.md · docs/quota-automation.md         ║
 ╚══════════════════════════════════════════════════════════════╝
 
 EOF

@@ -11,9 +11,14 @@ on:
     paths:
       - 'gitops/**'
 
+concurrency:
+  group: gitops-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 jobs:
   kustomize-build:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
 

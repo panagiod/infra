@@ -8,6 +8,10 @@ on:
       - 'terraform/modules/azure/**'
       - '.github/workflows/terraform-plan-azure.yml'
 
+concurrency:
+  group: terraform-plan-azure-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 permissions:
   id-token: write
   contents: read
@@ -16,6 +20,7 @@ permissions:
 jobs:
   plan:
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     # Requires repository variables — see docs/github-actions-azure-oidc.md
     if: vars.AZURE_CLIENT_ID != '' && vars.TF_STATE_STORAGE_ACCOUNT != ''
     strategy:
