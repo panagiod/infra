@@ -47,13 +47,13 @@ Wave 7:  istio-ingress-tls + monitoring + kyverno (parallel wait)
 Wave 8:  monitoring-alerts + platform-policies (parallel wait)
 Wave 9:  couchbase-config
 Wave 10: couchbase
-Wave 11: mtls-demo + kubeship (parallel wait)
+Wave 11: kubeship
 ```
 
 Authoritative Application list (16): `scripts/gitops-install-order.sh`.
 
 `istio-policies` only targets **istio-system** (mesh control plane). App-namespace policies
-(e.g. `mtls-demo` PeerAuthentication) ship with their Application so namespaces exist first.
+Workload namespaces (e.g. `kubeship`) ship with their Application so namespaces exist first.
 
 ### Istio + cert-manager (istio-csr)
 

@@ -96,7 +96,6 @@ check_platform_apps() {
     istio-policies
     monitoring
     monitoring-alerts
-    mtls-demo
     kubeship
   )
   for app in "${apps[@]}"; do
@@ -121,8 +120,6 @@ check_workloads() {
     "cert-manager:app.kubernetes.io/name=cert-manager"
     "istio-system:app=istiod"
     "istio-system:app=istio-ingressgateway"
-    "mtls-demo:app=frontend"
-    "mtls-demo:app=backend"
     "kubeship:app=kubeship-api"
   )
   for entry in "${checks[@]}"; do
@@ -137,12 +134,20 @@ check_workloads() {
   done
 }
 
-check_mtls_demo() {
-  log "Checking mTLS demo connectivity"
-  if kubectl -n mtls-demo exec deploy/frontend -- wget -qO- --timeout=5 http://backend:8080/ >/dev/null 2>&1; then
-    pass "frontend -> backend request succeeded"
+check_kubeship() {
+  log "Checking KubeShip API"
+  if kubectl -n kubeship rollout status deploy/kubeship-api --timeout=5s >/dev/null 2>&1; then
+    pass "kubeship-api deployment is Available"
   else
-    warn "frontend -> backend request failed (mesh may still be syncing)"
+    warn "kubeship-api not Available yet"
+    return
+  fi
+  local containers
+  containers="$(kubectl -n kubeship get pod -l app=kubeship-api -o jsonpath='{.items[0].spec.containers[*].name}' 2>/dev/null || true)"
+  if [[ "${containers}" == *"istio-proxy"* ]]; then
+    pass "kubeship-api pod has Istio sidecar (mesh injection)"
+  else
+    warn "kubeship-api pod missing Istio sidecar"
   fi
 }
 
@@ -191,7 +196,7 @@ main() {
   check_workloads
   check_ingress_tls
   check_mtls_policy
-  check_mtls_demo
+  check_kubeship
   summary
 }
 

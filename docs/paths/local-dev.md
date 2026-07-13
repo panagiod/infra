@@ -28,7 +28,7 @@ This will:
 2. Install **MetalLB** so `LoadBalancer` services work (Istio gateway)
 3. Install **Argo CD** via Helm
 4. Register the **cluster-root** Application → `gitops/clusters/staging`
-5. Wait for core apps (cert-manager, Istio, mtls-demo) to sync
+5. Wait for core apps (cert-manager, Istio, KubeShip) to sync
 
 ### Verify
 
@@ -107,7 +107,7 @@ kubectl -n istio-system get svc istio-ingressgateway
 | Works on kind | Needs cloud |
 |---------------|-------------|
 | Argo CD + full GitOps sync | Terraform VPC/EKS/AKS |
-| Istio mTLS + mtls-demo | Cloud-specific IAM / IRSA |
+| Istio mTLS + KubeShip | Cloud-specific IAM / IRSA |
 | cert-manager + platform CA | OIDC terraform plan against real state |
 | Prometheus + Grafana | Production DNS / public TLS trust |
 | MetalLB LoadBalancer | AWS LB Controller / Azure LB nuances |

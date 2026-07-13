@@ -415,7 +415,7 @@ spec:
 # -----------------------------------------------------------------------------
 # platform-policies — Kyverno policies from Git (cluster standards)
 # -----------------------------------------------------------------------------
-# Cluster-wide validation rules (e.g. Istio injection on mtls-demo) applied
+# Cluster-wide validation rules (e.g. Istio injection on kubeship) applied
 # after the Kyverno controller is running.
 apiVersion: argoproj.io/v1alpha1
 kind: Application
@@ -517,34 +517,6 @@ spec:
     syncOptions:
       - CreateNamespace=true
       - ServerSideApply=true
----
-# -----------------------------------------------------------------------------
-# mtls-demo — Sample app to verify mTLS in production
-# -----------------------------------------------------------------------------
-apiVersion: argoproj.io/v1alpha1
-kind: Application
-metadata:
-  name: mtls-demo
-  namespace: argocd
-  labels:
-    infra.platform/git-source: "true"
-  finalizers:
-    - resources-finalizer.argocd.argoproj.io
-spec:
-  project: default
-  source:
-    repoURL: https://github.com/panagiod/infra
-    targetRevision: main
-    path: gitops/apps/mtls-demo/overlays/prod
-  destination:
-    server: https://kubernetes.default.svc
-    namespace: mtls-demo
-  syncPolicy:
-    automated:
-      prune: true
-      selfHeal: true
-    syncOptions:
-      - CreateNamespace=true
 ---
 # -----------------------------------------------------------------------------
 # kubeship — Shipping management API (production)

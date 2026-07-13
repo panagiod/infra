@@ -15,6 +15,5 @@ GITOPS_INSTALL_ORDER=(
   platform-policies
   couchbase-config
   couchbase
-  mtls-demo
   kubeship
 )

@@ -3,4 +3,4 @@ apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 
 resources:
-  - require-istio-injection.yaml  # Ensures mtls-demo namespace keeps Istio injection on
+  - require-istio-injection.yaml  # Ensures kubeship namespace keeps Istio injection on

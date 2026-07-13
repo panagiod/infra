@@ -90,7 +90,7 @@ After Argo CD syncs (same as AWS):
 ```bash
 kubectl -n cert-manager get pods
 kubectl -n istio-system get pods
-kubectl -n mtls-demo get pods
+kubectl -n kubeship get pods
 ```
 
 ## Remote state

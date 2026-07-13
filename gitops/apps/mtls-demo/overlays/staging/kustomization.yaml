@@ -1,9 +1,0 @@
-# Staging overlay for mTLS demo — single replica per Deployment from base.
-apiVersion: kustomize.config.k8s.io/v1beta1
-kind: Kustomization
-
-resources:
-  - ../../base  # Inherit all demo manifests without changing replica counts
-
-commonLabels:
-  environment: staging  # Label resources for staging cluster identification

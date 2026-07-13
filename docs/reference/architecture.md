@@ -60,8 +60,7 @@ Bootstrap order matches `scripts/gitops-install-order.sh` and is enforced in **K
 | 12 | platform-policies | cluster-scoped |
 | 13 | couchbase-config | couchbase |
 | 14 | couchbase | couchbase |
-| 15 | mtls-demo | mtls-demo |
-| 16 | kubeship | kubeship |
+| 15 | kubeship | kubeship |
 
 Kind smoke groups these into dependency waves (for example wave 6: `istio-gateway` + `istio-policies`). See [mechanics.md](../bootstrap/mechanics.md) and `.github/workflows/kind-smoke.yml`.
 
@@ -105,7 +104,7 @@ Restrict Kubernetes API access in prod via `cluster_endpoint_public_access_cidrs
 ## Security baseline
 
 - Istio `PeerAuthentication` STRICT in `istio-system`
-- Kyverno: require Istio injection on demo namespaces
+- Kyverno: require Istio injection on workload namespaces (e.g. kubeship)
 - Separate Terraform state and platform CA per environment
 - Lab defaults (open API CIDRs, bootstrap CA) — tighten before production
 

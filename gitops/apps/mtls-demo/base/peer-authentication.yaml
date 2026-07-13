@@ -1,9 +1,0 @@
-# STRICT mTLS for the demo namespace — deployed with the app so the namespace exists.
-apiVersion: security.istio.io/v1beta1
-kind: PeerAuthentication
-metadata:
-  name: default
-  namespace: mtls-demo
-spec:
-  mtls:
-    mode: STRICT
