@@ -38,7 +38,10 @@ def projects():
         ["gh", "project", "list", "--owner", owner, "--format", "json"],
         text=True,
     )
-    return json.loads(out)
+    data = json.loads(out)
+    if isinstance(data, list):
+        return data
+    return data.get("projects", [])
 
 for p in projects():
     if p.get("title") == title:
