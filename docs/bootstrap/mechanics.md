@@ -37,14 +37,20 @@ Materialization reads the same `gitops/clusters/<env>/applications.yaml` as prod
 **In-cluster fail-fast:** `FAIL_FAST=true` (Kind smoke default) exits wait loops on `ImagePullBackOff`, `CrashLoopBackOff`, or permanent Argo sync errors (`not found`) instead of waiting the full wave timeout.
 
 ```text
-Wave 1: materialize cert-manager     → wait
-Wave 2: materialize platform-ca      → wait
-Wave 3: materialize istio-base       → wait
-Wave 4: materialize istio-csr        → wait   # before istiod (cert-manager requirement)
-Wave 5: materialize istiod           → wait
-Wave 6: materialize istio-gateway + istio-policies (parallel wait)
-…
+Wave 1:  cert-manager
+Wave 2:  platform-ca
+Wave 3:  istio-base
+Wave 4:  istio-csr
+Wave 5:  istiod
+Wave 6:  istio-gateway + istio-policies (parallel wait)
+Wave 7:  istio-ingress-tls + monitoring + kyverno (parallel wait)
+Wave 8:  monitoring-alerts + platform-policies (parallel wait)
+Wave 9:  couchbase-config
+Wave 10: couchbase
+Wave 11: mtls-demo + kubeship (parallel wait)
 ```
+
+Authoritative Application list (16): `scripts/gitops-install-order.sh`.
 
 `istio-policies` only targets **istio-system** (mesh control plane). App-namespace policies
 (e.g. `mtls-demo` PeerAuthentication) ship with their Application so namespaces exist first.

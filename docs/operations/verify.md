@@ -41,18 +41,27 @@ Or configure kubectl context manually and set `LOCAL=true`.
 
 ## What it checks
 
+The script runs these checks in order (see `scripts/verify-platform.sh` for the authoritative list):
+
 | Check | Pass criteria |
 |-------|----------------|
 | Nodes | At least one `Ready` node |
 | Argo CD | `argocd-server` Running |
-| cluster-root | Application exists (skipped in `LOCAL=true` / Kind smoke wave bootstrap) |
-| Platform apps | cert-manager, Istio, monitoring, mtls-demo, etc. |
-| Workloads | Key pods Running in cert-manager, istio-system, mtls-demo |
-| mTLS | `PeerAuthentication` default mode `STRICT` |
+| cluster-root | Application exists, Synced/Healthy (**skipped** when `LOCAL=true`) |
+| Platform Applications | `cert-manager`, `platform-ca`, `istiod`, `istio-csr`, `istio-gateway`, `istio-ingress-tls`, `istio-policies`, `monitoring`, `monitoring-alerts`, `mtls-demo`, `kubeship` |
+| Workloads | Running pods in `cert-manager`, `istio-system` (istiod, gateway), `mtls-demo`, `kubeship` |
 | Ingress TLS | `istio-ingressgateway-certs` Certificate Ready |
-| Demo | `frontend` → `backend` request over mesh |
+| mTLS policy | `PeerAuthentication` default mode `STRICT` in `istio-system` |
+| mTLS demo | `frontend` → `backend` request over mesh |
 
-Warnings (not hard failures) appear when apps are still syncing — **wait 10–15 minutes** on first run and re-try.
+**Not checked today:** `istio-base`, `kyverno`, `platform-policies`, `couchbase-config`, `couchbase` — confirm these in Argo CD manually if needed:
+
+```bash
+kubectl -n argocd get applications
+kubectl -n couchbase get pods
+```
+
+Warnings (not hard failures) appear when apps are still syncing — wait 10–15 minutes on first run and re-try.
 
 ---
 

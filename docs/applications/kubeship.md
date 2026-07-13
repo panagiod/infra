@@ -65,9 +65,7 @@ go test ./...
 
 ## Install order
 
-```text
-… → platform-policies → couchbase-config → couchbase → mtls-demo → kubeship
-```
+KubeShip is the last Application in the platform bundle. Full order: [reference/architecture.md](../reference/architecture.md#platform-bundle-install-order) (`scripts/gitops-install-order.sh`).
 
 ## Kind smoke
 

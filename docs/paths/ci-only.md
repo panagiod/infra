@@ -49,13 +49,21 @@ Repeat edits on the same branch; each push re-runs CI.
 
 | Workflow | Triggers when you change | What it does | Typical time |
 |----------|--------------------------|--------------|--------------|
-| [gitops.yml](../../.github/workflows/gitops.yml) | `gitops/**` | `kustomize build` all overlays | ~1–2 min |
-| [kind-smoke.yml](../../.github/workflows/kind-smoke.yml) | `gitops/**`, bootstrap scripts | Ephemeral kind cluster + full bootstrap | ~15–30 min |
+| [gitops.yml](../../.github/workflows/gitops.yml) | `gitops/**` | `kustomize build` all overlays + preflight | ~1–2 min |
+| [kind-smoke.yml](../../.github/workflows/kind-smoke.yml) | `gitops/**`, bootstrap scripts, `apps/kubeship/**` | Ephemeral kind cluster + full bootstrap | ~10–15 min |
+| [kubeship.yml](../../.github/workflows/kubeship.yml) | `apps/kubeship/**` | Go unit tests + build | ~1 min |
 | [terraform.yml](../../.github/workflows/terraform.yml) | `terraform/**` | `terraform fmt` + `validate` | ~3–5 min |
 | [terraform-plan.yml](../../.github/workflows/terraform-plan.yml) | `terraform/**` (AWS) | Plan against AWS — **needs OIDC vars** | ~5 min |
 | [terraform-plan-azure.yml](../../.github/workflows/terraform-plan-azure.yml) | `terraform/**` (Azure) | Plan against Azure — **needs OIDC vars** | ~5 min |
 
-**Kind smoke is the slowest** — it only runs when GitOps-related files change. Docs-only PRs skip it.
+**On `main` after merge** (not PR gates):
+
+| Workflow | Triggers when you change | What it does |
+|----------|--------------------------|--------------|
+| [build-kubeship-staging.yml](../../.github/workflows/build-kubeship-staging.yml) | `apps/kubeship/**` on `main` | Pushes `ghcr.io/.../kubeship:staging` |
+| [release.yml](../../.github/workflows/release.yml) | Manual `workflow_dispatch` | Production promotion via semver tag |
+
+**Kind smoke is the slowest** PR gate — it runs when GitOps-related files or KubeShip app sources change. Docs-only PRs skip it.
 
 Kind smoke starts with **`scripts/ci-check-images.sh`** (also in the GitOps workflow via **`scripts/ci-preflight-gitops.sh`**) before creating a kind cluster.
 

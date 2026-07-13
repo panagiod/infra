@@ -42,22 +42,28 @@ Each environment syncs the same `gitops/platform/` tree; only Terraform (network
 
 ## Platform bundle (install order)
 
-Bootstrap order is documented here and enforced in **Kind smoke** by wave-by-wave Application materialization (`wait-for-app.sh` / `wait-for-apps.sh`; see [bootstrap.md](../bootstrap/mechanics.md)). On real clusters, **cluster-root** syncs all child Application CRs from Git; Argo CD does not use `spec.dependsOn` on Application CRs.
+Bootstrap order matches `scripts/gitops-install-order.sh` and is enforced in **Kind smoke** by wave-by-wave Application materialization (`wait-for-app.sh` / `wait-for-apps.sh`; see [mechanics.md](../bootstrap/mechanics.md)). On real clusters, **cluster-root** syncs all child Application CRs from Git; Argo CD does not use `spec.dependsOn` on Application CRs.
 
-| Order | Component | Namespace |
-|------|-----------|-----------|
-| 0 | cert-manager | cert-manager |
-| 1 | ClusterIssuer + mesh CA | cert-manager |
-| 2 | Istio base | istio-system |
-| 3 | istio-csr | cert-manager |
-| 4 | istiod | istio-system |
-| 5 | Istio gateway + ingress TLS | istio-system |
-| 6 | PeerAuthentication STRICT default | istio-system |
-| 7 | kube-prometheus-stack + alert rules | monitoring |
-| 8 | Kyverno policies | kyverno |
-| 9 | mtls-demo app | mtls-demo |
-| 10 | Couchbase (config + cluster) | couchbase |
-| 11 | KubeShip API | kubeship |
+| # | Argo CD Application | Namespace |
+|---|---------------------|-----------|
+| 1 | cert-manager | cert-manager |
+| 2 | platform-ca | cert-manager |
+| 3 | istio-base | istio-system |
+| 4 | istio-csr | cert-manager |
+| 5 | istiod | istio-system |
+| 6 | istio-gateway | istio-system |
+| 7 | istio-ingress-tls | istio-system |
+| 8 | istio-policies | istio-system |
+| 9 | monitoring | monitoring |
+| 10 | monitoring-alerts | monitoring |
+| 11 | kyverno | kyverno |
+| 12 | platform-policies | cluster-scoped |
+| 13 | couchbase-config | couchbase |
+| 14 | couchbase | couchbase |
+| 15 | mtls-demo | mtls-demo |
+| 16 | kubeship | kubeship |
+
+Kind smoke groups these into dependency waves (for example wave 6: `istio-gateway` + `istio-policies`). See [mechanics.md](../bootstrap/mechanics.md) and `.github/workflows/kind-smoke.yml`.
 
 ## Certificate flow
 
