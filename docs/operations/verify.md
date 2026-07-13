@@ -108,8 +108,9 @@ Details: [github-actions-aws-oidc.md](../delivery/github-actions-aws-oidc.md)
 
 | Workflow | Trigger |
 |----------|---------|
-| Kind smoke | PR changes under `gitops/**` |
-| Terraform plan (AWS) | PR changes under `terraform/environments/staging|prod/` + OIDC vars set |
+| Kind smoke | PR changes under `gitops/**` or `apps/kubeship/**` |
+| KubeShip tests | PR changes under `apps/kubeship/**` |
+| Terraform plan (AWS) | PR changes under `terraform/environments/staging\|prod/` + OIDC vars set |
 | Terraform plan (Azure) | PR changes under `terraform/environments/azure/**` + Azure OIDC vars |
 
 ---
