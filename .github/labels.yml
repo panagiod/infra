@@ -1,0 +1,26 @@
+# Synced to GitHub by .github/workflows/sync-labels.yml (EndBug/label-sync).
+# Domain labels for planning; default GitHub labels are left as-is.
+
+- name: platform
+  color: 1D76DB
+  description: Platform, GitOps, Terraform, bootstrap
+
+- name: app
+  color: 0E8A16
+  description: Application workloads (KubeShip)
+
+- name: docs
+  color: 0075CA
+  description: Documentation and onboarding
+
+- name: ci
+  color: FBCA04
+  description: CI workflows and smoke tests
+
+- name: cloud-soak
+  color: B60205
+  description: Real cloud staging validation
+
+- name: security
+  color: D93F0B
+  description: PKI, policies, and hardening

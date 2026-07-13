@@ -1,0 +1,43 @@
+{
+  "close": [
+    {
+      "number": 14,
+      "comment": "Closing test issue."
+    },
+    {
+      "number": 15,
+      "comment": "Superseded by KubeShip Phase 1 in this repo (PR #21). Application manifests live under `gitops/apps/kubeship/`; a separate app repo is optional."
+    },
+    {
+      "number": 16,
+      "comment": "Done via KubeShip Phase 1 (PR #21): Argo CD Application CRs in `gitops/clusters/*/applications.yaml` and install order in `scripts/gitops-install-order.sh`."
+    },
+    {
+      "number": 17,
+      "comment": "Couchbase backing service shipped with KubeShip (PR #21) under `gitops/platform/couchbase/`. Further services can be tracked as new issues when requirements are clear."
+    }
+  ],
+  "upsert": [
+    {
+      "match_title": "Cloud staging soak",
+      "title": "Cloud staging soak",
+      "labels": ["cloud-soak", "platform"],
+      "state": "open",
+      "body": "## Goal\n\nValidate the full platform (including KubeShip) on a real cloud staging cluster, then destroy to control cost.\n\n## Checklist\n\n- [ ] Bootstrap AWS or Azure staging (`./scripts/bootstrap-aws.sh` or `bootstrap-azure.sh`)\n- [ ] `verify-platform.sh` green (KubeShip Available + Istio sidecar)\n- [ ] Hit KubeShip ingress or port-forward `/health`\n- [ ] Document any cloud-specific fixes in a PR\n- [ ] Tear down cluster when done\n\n## References\n\n- [docs/reference/project-status.md](https://github.com/panagiod/infra/blob/main/docs/reference/project-status.md)\n- [docs/operations/verify.md](https://github.com/panagiod/infra/blob/main/docs/operations/verify.md)\n\n## Tracking\n\nAdd this issue to the **infra — Phase 1** GitHub Project (`./scripts/setup-github-project.sh`)."
+    },
+    {
+      "match_title": "First KubeShip production release",
+      "title": "First KubeShip production release",
+      "labels": ["app", "ci"],
+      "state": "open",
+      "body": "## Goal\n\nRun the production release pipeline for KubeShip and pin the prod GitOps overlay to a semver image tag.\n\n## Checklist\n\n- [ ] Staging image green on `main` (`build-kubeship-staging.yml`)\n- [ ] Tag `v0.1.0` (or next semver) to trigger `release.yml`\n- [ ] Confirm prod overlay references the published GHCR tag\n- [ ] Document release steps in `docs/applications/kubeship.md` if anything differs from docs\n\n## References\n\n- `.github/workflows/release.yml`\n- `gitops/apps/kubeship/overlays/prod/`"
+    },
+    {
+      "match_title": "Security hardening — Helm pins and alerting",
+      "title": "Security hardening — Helm pins and alerting",
+      "labels": ["security", "platform"],
+      "state": "open",
+      "body": "## Goal\n\nMove from lab defaults toward production-ready posture (still on staging first).\n\n## Checklist\n\n- [ ] Pin Helm chart versions for platform components\n- [ ] Replace bootstrap platform CA decision (or document explicit dev-only stance)\n- [ ] Wire Alertmanager receivers (replace Slack placeholders)\n- [ ] Restrict Kubernetes API CIDRs for prod Terraform vars\n- [ ] Rotate Grafana / Couchbase staging secrets off `changeme`\n\n## References\n\n- [docs/project-status.md](https://github.com/panagiod/infra/blob/main/docs/project-status.md) — maturity path step 4\n- [docs/alerting.md](https://github.com/panagiod/infra/blob/main/docs/alerting.md)"
+    }
+  ]
+}

@@ -28,7 +28,7 @@ Design details: [docs/reference/architecture.md](docs/reference/architecture.md)
 
 ## Project status
 
-Phase 1 scaffold — feature-complete in repository; not production-proven until verified on a real cluster. See [docs/reference/project-status.md](docs/reference/project-status.md).
+Phase 1 scaffold — feature-complete in repository; not production-proven until verified on a real cluster. See [docs/reference/project-status.md](docs/reference/project-status.md) and the [GitHub Project backlog](docs/reference/github-project.md).
 
 ## Contributing
 

@@ -1,0 +1,25 @@
+name: Sync project backlog
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/project-backlog.json'
+      - 'scripts/sync-github-backlog.py'
+      - '.github/workflows/sync-project-backlog.yml'
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Sync issues from backlog
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: python3 scripts/sync-github-backlog.py

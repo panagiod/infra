@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Project status (source of truth)
+    url: https://github.com/panagiod/infra/blob/main/docs/project-status.md
+    about: Maturity path, lab vs production-proven scope
+  - name: GitHub Project setup
+    url: https://github.com/panagiod/infra/blob/main/docs/github-project.md
+    about: Board setup and backlog sync

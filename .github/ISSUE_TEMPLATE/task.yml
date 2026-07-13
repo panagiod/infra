@@ -1,0 +1,42 @@
+name: Task
+description: Track a concrete piece of platform or application work
+title: "[task] "
+labels: ["platform"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Prefer updating `.github/project-backlog.json` for roadmap items so `sync-project-backlog` keeps the board in sync.
+        See [docs/github-project.md](https://github.com/panagiod/infra/blob/main/docs/github-project.md).
+
+  - type: textarea
+    id: goal
+    attributes:
+      label: Goal
+      description: What does done look like?
+    validations:
+      required: true
+
+  - type: textarea
+    id: checklist
+    attributes:
+      label: Checklist
+      description: Actionable steps
+      value: |
+        - [ ]
+    validations:
+      required: true
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - platform
+        - app
+        - docs
+        - ci
+        - cloud-soak
+        - security
+    validations:
+      required: true
