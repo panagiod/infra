@@ -37,5 +37,7 @@ Authoritative catalog of repository scripts. Path-specific guides link here inst
 | `scripts/monitor-ci.sh` | Poll GitHub Actions run status |
 | `scripts/scaffold-application-repo.sh` | Copy `templates/application/` into a new app repo directory |
 | `scripts/setup-github-oidc-aws.sh` | One-time AWS OIDC for Terraform plan on PRs |
+| `scripts/setup-github-project.sh` | One-time GitHub Project board and repo link |
+| `scripts/sync-github-backlog.py` | Sync issues from `.github/project-backlog.json` |
 
 Bootstrap semantics and wave order: [mechanics.md](../bootstrap/mechanics.md).

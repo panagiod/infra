@@ -2,6 +2,11 @@
 
 <!-- What does this PR change and why? -->
 
+## Tracking
+
+<!-- Link issues so the Project board updates: Closes #N / Relates to #N -->
+- **Issue(s):**
+
 ## Path
 
 - [ ] **Option B (CI only)** — no cluster needed; CI validates on this PR
