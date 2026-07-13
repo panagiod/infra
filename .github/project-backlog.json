@@ -23,21 +23,14 @@
       "title": "Cloud staging soak",
       "labels": ["cloud-soak", "platform"],
       "state": "open",
-      "body": "## Goal\n\nValidate the full platform (including KubeShip) on a real cloud staging cluster, then destroy to control cost.\n\n## Checklist\n\n- [ ] Bootstrap AWS or Azure staging (`./scripts/bootstrap-aws.sh` or `bootstrap-azure.sh`)\n- [ ] `verify-platform.sh` green (KubeShip Available + Istio sidecar)\n- [ ] Hit KubeShip ingress or port-forward `/health`\n- [ ] Document any cloud-specific fixes in a PR\n- [ ] Tear down cluster when done\n\n## References\n\n- [docs/project-status.md](https://github.com/panagiod/infra/blob/main/docs/project-status.md)\n- [docs/verify.md](https://github.com/panagiod/infra/blob/main/docs/verify.md)\n\n## Tracking\n\nAdd this issue to the **infra — Phase 1** GitHub Project (`./scripts/setup-github-project.sh`)."
-    },
-    {
-      "match_title": "Merge open platform PRs",
-      "title": "Merge open platform PRs",
-      "labels": ["docs", "platform"],
-      "state": "open",
-      "body": "## Goal\n\nLand in-flight PRs that align docs and GitOps with KubeShip as the workload proof point.\n\n## Checklist\n\n- [ ] Merge docs refactor (PR #22) if still open\n- [ ] Merge mtls-demo removal (PR #23) if still open\n- [ ] Rebase any follow-up branches on `main`\n\n## Done when\n\n`main` has the reorganized docs and no `mtls-demo` references."
+      "body": "## Goal\n\nValidate the full platform (including KubeShip) on a real cloud staging cluster, then destroy to control cost.\n\n## Checklist\n\n- [ ] Bootstrap AWS or Azure staging (`./scripts/bootstrap-aws.sh` or `bootstrap-azure.sh`)\n- [ ] `verify-platform.sh` green (KubeShip Available + Istio sidecar)\n- [ ] Hit KubeShip ingress or port-forward `/health`\n- [ ] Document any cloud-specific fixes in a PR\n- [ ] Tear down cluster when done\n\n## References\n\n- [docs/reference/project-status.md](https://github.com/panagiod/infra/blob/main/docs/reference/project-status.md)\n- [docs/operations/verify.md](https://github.com/panagiod/infra/blob/main/docs/operations/verify.md)\n\n## Tracking\n\nAdd this issue to the **infra — Phase 1** GitHub Project (`./scripts/setup-github-project.sh`)."
     },
     {
       "match_title": "First KubeShip production release",
       "title": "First KubeShip production release",
       "labels": ["app", "ci"],
       "state": "open",
-      "body": "## Goal\n\nRun the production release pipeline for KubeShip and pin the prod GitOps overlay to a semver image tag.\n\n## Checklist\n\n- [ ] Staging image green on `main` (`build-kubeship-staging.yml`)\n- [ ] Tag `v0.1.0` (or next semver) to trigger `release.yml`\n- [ ] Confirm prod overlay references the published GHCR tag\n- [ ] Document release steps in `docs/kubeship.md` if anything differs from docs\n\n## References\n\n- `.github/workflows/release.yml`\n- `gitops/apps/kubeship/overlays/prod/`"
+      "body": "## Goal\n\nRun the production release pipeline for KubeShip and pin the prod GitOps overlay to a semver image tag.\n\n## Checklist\n\n- [ ] Staging image green on `main` (`build-kubeship-staging.yml`)\n- [ ] Tag `v0.1.0` (or next semver) to trigger `release.yml`\n- [ ] Confirm prod overlay references the published GHCR tag\n- [ ] Document release steps in `docs/applications/kubeship.md` if anything differs from docs\n\n## References\n\n- `.github/workflows/release.yml`\n- `gitops/apps/kubeship/overlays/prod/`"
     },
     {
       "match_title": "Security hardening — Helm pins and alerting",

@@ -9,11 +9,11 @@ Planning lives in three layers that must stay in sync:
 
 | Layer | File / system |
 |-------|----------------|
-| Narrative | `docs/project-status.md` |
+| Narrative | `docs/reference/project-status.md` |
 | Machine backlog | `.github/project-backlog.json` |
 | Board | GitHub Issues + **infra — Phase 1** Project |
 
-PRs ship work; the backlog answers **what is next**. See `docs/github-project.md`.
+PRs ship work; the backlog answers **what is next**. See `docs/reference/github-project.md`.
 
 The Cursor bot **cannot** create Projects or edit issues via API (403). Update repo files and workflows; the owner runs sync after merge.
 
