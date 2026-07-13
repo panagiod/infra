@@ -133,8 +133,8 @@ jobs:
       - name: Platform 11/12 — Wave 10 couchbase
         run: WAIT_TIMEOUT=1200 ./scripts/wait-for-app.sh couchbase
 
-      - name: Platform 12/12 — Wave 11 mtls-demo, kubeship
-        run: WAIT_TIMEOUT=900 ./scripts/wait-for-apps.sh mtls-demo kubeship
+      - name: Platform 12/12 — Wave 11 kubeship
+        run: WAIT_TIMEOUT=900 ./scripts/wait-for-app.sh kubeship
 
       - name: Verify core platform health
         env:

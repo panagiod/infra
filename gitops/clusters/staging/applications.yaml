@@ -546,34 +546,6 @@ spec:
       - ServerSideApply=true
 ---
 # -----------------------------------------------------------------------------
-# mtls-demo — Sample app to verify mTLS and mesh policies
-# -----------------------------------------------------------------------------
-apiVersion: argoproj.io/v1alpha1
-kind: Application
-metadata:
-  name: mtls-demo
-  namespace: argocd
-  labels:
-    infra.platform/git-source: "true"
-  finalizers:
-    - resources-finalizer.argocd.argoproj.io
-spec:
-  project: default
-  source:
-    repoURL: https://github.com/panagiod/infra
-    targetRevision: main
-    path: gitops/apps/mtls-demo/overlays/staging
-  destination:
-    server: https://kubernetes.default.svc
-    namespace: mtls-demo
-  syncPolicy:
-    automated:
-      prune: true
-      selfHeal: true
-    syncOptions:
-      - CreateNamespace=true
----
-# -----------------------------------------------------------------------------
 # kubeship — Shipping management API (Couchbase-backed)
 # -----------------------------------------------------------------------------
 apiVersion: argoproj.io/v1alpha1

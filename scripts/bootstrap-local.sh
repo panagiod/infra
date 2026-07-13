@@ -177,12 +177,6 @@ app_workload_ready() {
       available="$(kubectl -n istio-system get deploy istio-ingressgateway -o jsonpath='{.status.availableReplicas}' 2>/dev/null || echo 0)"
       [[ "${available:-0}" -ge 1 ]]
       ;;
-    mtls-demo)
-      local backend frontend
-      backend="$(kubectl -n mtls-demo get deploy backend -o jsonpath='{.status.availableReplicas}' 2>/dev/null || echo 0)"
-      frontend="$(kubectl -n mtls-demo get deploy frontend -o jsonpath='{.status.availableReplicas}' 2>/dev/null || echo 0)"
-      [[ "${backend:-0}" -ge 1 && "${frontend:-0}" -ge 1 ]]
-      ;;
     kubeship)
       local available
       available="$(kubectl -n kubeship get deploy kubeship-api -o jsonpath='{.status.availableReplicas}' 2>/dev/null || echo 0)"
@@ -345,7 +339,7 @@ wait_for_single_app() {
 
 wait_for_apps() {
   log "Waiting for core Applications (timeout ${WAIT_TIMEOUT}s each, materialize per wave)"
-  local apps=(cert-manager platform-ca istio-base istio-csr istiod istio-gateway istio-policies mtls-demo)
+  local apps=(cert-manager platform-ca istio-base istio-csr istiod istio-gateway istio-policies)
   local app
   for app in "${apps[@]}"; do
     materialize_application "${app}"

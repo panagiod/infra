@@ -104,8 +104,6 @@ validate_gitops() {
     gitops/clusters/prod
     gitops/platform/cert-manager/overlays/staging
     gitops/platform/cert-manager/overlays/prod
-    gitops/apps/mtls-demo/overlays/staging
-    gitops/apps/mtls-demo/overlays/prod
     gitops/apps/kubeship/overlays/cloud-staging
     gitops/apps/kubeship/overlays/prod
     gitops/platform/couchbase/overlays/staging

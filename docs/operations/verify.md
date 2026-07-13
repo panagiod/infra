@@ -48,11 +48,11 @@ The script runs these checks in order (see `scripts/verify-platform.sh` for the 
 | Nodes | At least one `Ready` node |
 | Argo CD | `argocd-server` Running |
 | cluster-root | Application exists, Synced/Healthy (**skipped** when `LOCAL=true`) |
-| Platform Applications | `cert-manager`, `platform-ca`, `istiod`, `istio-csr`, `istio-gateway`, `istio-ingress-tls`, `istio-policies`, `monitoring`, `monitoring-alerts`, `mtls-demo`, `kubeship` |
-| Workloads | Running pods in `cert-manager`, `istio-system` (istiod, gateway), `mtls-demo`, `kubeship` |
+| Platform Applications | `cert-manager`, `platform-ca`, `istiod`, `istio-csr`, `istio-gateway`, `istio-ingress-tls`, `istio-policies`, `monitoring`, `monitoring-alerts`, `kubeship` |
+| Workloads | Running pods in `cert-manager`, `istio-system` (istiod, gateway), `kubeship` |
 | Ingress TLS | `istio-ingressgateway-certs` Certificate Ready |
 | mTLS policy | `PeerAuthentication` default mode `STRICT` in `istio-system` |
-| mTLS demo | `frontend` → `backend` request over mesh |
+| KubeShip | `kubeship-api` Available with Istio sidecar |
 
 **Not checked today:** `istio-base`, `kyverno`, `platform-policies`, `couchbase-config`, `couchbase` — confirm these in Argo CD manually if needed:
 
@@ -72,7 +72,7 @@ kubectl -n argocd get applications
 kubectl -n cert-manager get clusterissuer
 kubectl -n istio-system get svc istio-ingressgateway
 kubectl -n istio-system get certificate istio-ingressgateway-certs
-kubectl -n mtls-demo get pods
+kubectl -n kubeship get pods
 ```
 
 **Argo CD admin password:**
@@ -82,11 +82,14 @@ kubectl -n argocd get secret argocd-initial-admin-secret \
   -o jsonpath='{.data.password}' | base64 -d && echo
 ```
 
-**mTLS demo:**
+**KubeShip health:**
 
 ```bash
-kubectl -n mtls-demo exec deploy/frontend -- wget -qO- http://backend:8080/
+kubectl -n kubeship rollout status deploy/kubeship-api
+kubectl -n kubeship get pod -l app=kubeship-api -o jsonpath='{.items[0].spec.containers[*].name}'
 ```
+
+The pod should list both `kubeship-api` and `istio-proxy`.
 
 ---
 

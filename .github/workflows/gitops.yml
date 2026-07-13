@@ -65,12 +65,6 @@ jobs:
       - name: Build cert-manager prod overlay
         run: kustomize build gitops/platform/cert-manager/overlays/prod
 
-      - name: Build mtls-demo staging overlay
-        run: kustomize build gitops/apps/mtls-demo/overlays/staging
-
-      - name: Build mtls-demo prod overlay
-        run: kustomize build gitops/apps/mtls-demo/overlays/prod
-
       - name: Build kubeship cloud-staging overlay
         run: kustomize build gitops/apps/kubeship/overlays/cloud-staging
 

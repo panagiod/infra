@@ -13,7 +13,7 @@
 5. Verify:
    ```bash
    kubectl version
-   kubectl -n mtls-demo rollout status deploy/frontend
+   kubectl -n kubeship rollout status deploy/kubeship-api
    kubectl -n istio-system get pods
    ```
 
