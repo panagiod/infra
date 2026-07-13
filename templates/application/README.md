@@ -37,12 +37,11 @@ Release workflow pushes to `ghcr.io/<owner>/<repo>:<tag>`. After tagging, update
 
 ## Wire Argo CD (after first image exists)
 
-1. Copy `gitops/clusters/staging/application-myapp.yaml.example` from the infra repo.
-2. Set `spec.source.repoURL` to your app repo and `path` to `deploy/overlays/staging`.
-3. Append the Application to `gitops/clusters/staging/applications.yaml` **after** platform apps (see install order in infra).
-4. Repeat for prod when ready.
+1. Add GitOps manifests under `gitops/apps/<your-app>/` in the infra repo.
+2. Register an Argo CD Application in `gitops/clusters/staging/applications.yaml` (after platform apps; see `scripts/gitops-install-order.sh`).
+3. Repeat for prod when ready.
 
-See [docs/application-project.md](https://github.com/panagiod/infra/blob/main/docs/application-project.md) in the infra repo for the full checklist.
+See [applications/application-project.md](https://github.com/panagiod/infra/blob/main/docs/applications/application-project.md) in the infra repo for the full checklist.
 
 ## Local checks
 

@@ -100,4 +100,4 @@ Option A quota  →  Stopped by idle timeout + shutdown-lab.sh
 Option B quota  →  Jobs auto-end; concurrency cancels duplicates
 ```
 
-See also: [codespaces.md](codespaces.md) · [getting-started.md](getting-started.md)
+See also: [codespaces.md](../paths/codespaces.md) · [getting-started.md](../start/getting-started.md)

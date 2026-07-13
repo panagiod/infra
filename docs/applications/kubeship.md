@@ -65,22 +65,15 @@ go test ./...
 
 ## Install order
 
-```text
-… → platform-policies → couchbase-config → couchbase → mtls-demo → kubeship
-```
+KubeShip is the last Application in the platform bundle. Full order: [reference/architecture.md](../reference/architecture.md#platform-bundle-install-order) (`scripts/gitops-install-order.sh`).
 
 ## Kind smoke
 
 CI builds `apps/kubeship/Dockerfile`, tags the image as `ghcr.io/panagiod/infra/kubeship:staging`, and loads it into kind before bootstrap (same tag staging cloud uses).
 
-## Delivery (staging → production)
+## Delivery
 
-| Environment | Git revision | Image |
-|-------------|--------------|-------|
-| Staging | `main` | `ghcr.io/panagiod/infra/kubeship:staging` |
-| Production | tag `vX.Y.Z` | `ghcr.io/panagiod/infra/kubeship:vX.Y.Z` |
-
-See [delivery.md](delivery.md) for the full promotion workflow and release checklist.
+Promotion from staging to production: [release-pipeline.md](../delivery/release-pipeline.md).
 
 ## Credentials (staging lab)
 

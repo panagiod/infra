@@ -161,8 +161,8 @@ Do not upgrade production Couchbase independently of a tagged release without a 
 
 ## Related docs
 
-- [ci-only.md](ci-only.md) — PR validation without a cluster
-- [verify.md](verify.md) — post-deploy health checks
-- [upgrades.md](upgrades.md) — component upgrades
-- [kubeship.md](kubeship.md) — application details
-- [project-status.md](project-status.md) — what is lab vs production-proven
+- [ci-only.md](../paths/ci-only.md) — PR validation without a cluster
+- [verify.md](../operations/verify.md) — post-deploy health checks
+- [upgrades.md](../operations/upgrades.md) — component upgrades
+- [kubeship.md](../applications/kubeship.md) — application details
+- [project-status.md](../reference/project-status.md) — what is lab vs production-proven

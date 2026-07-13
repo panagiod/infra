@@ -12,7 +12,7 @@ Codespaces lab (Option A) — quick commands:
 CI checks before push (Option B):
   ./scripts/ci-validate.sh
 
-Docs: docs/getting-started.md · docs/ci-only.md
+Docs: docs/start/getting-started.md · docs/paths/ci-only.md
 
 EOF
 fi

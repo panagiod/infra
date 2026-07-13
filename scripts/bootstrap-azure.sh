@@ -168,7 +168,7 @@ main() {
       ;;
   esac
 
-  log "Done. See docs/verify.md and docs/azure.md."
+  log "Done. See docs/operations/verify.md and docs/bootstrap/azure.md."
 }
 
 main "$@"

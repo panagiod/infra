@@ -1,76 +1,82 @@
-# Documentation index
+# Documentation
 
-**New here?** Start with [getting-started.md](getting-started.md).
+Formal reference for the **infra** platform repository. Each topic has a single authoritative page; other pages link to it rather than repeat content.
 
-## Start here
+**New to this repository?** Start with [start/getting-started.md](start/getting-started.md).
 
-| Doc | Audience |
-|-----|----------|
-| [getting-started.md](getting-started.md) | Everyone — decision tree and golden paths |
-| [cloud-agent.md](cloud-agent.md) | **Default** — run everything via Cursor agent (`from-here.sh`) |
-| [codespaces.md](codespaces.md) | **Option A** — browser lab via GitHub Codespaces |
-| [ci-only.md](ci-only.md) | **Option B** — contribute via PR + CI, no cluster |
-| [quota-automation.md](quota-automation.md) | Auto-shutdown for Codespaces + CI quota guards |
-| [project-status.md](project-status.md) | What's complete, what's lab-only, what needs cloud |
-| [application-project.md](application-project.md) | Scaffold a separate app repo, GitHub Project, Argo CD wiring |
-| [kubeship.md](kubeship.md) | KubeShip shipping API (Couchbase-backed) |
-| [delivery.md](delivery.md) | CI → staging → production promotion path |
-| [local-dev.md](local-dev.md) | No cloud budget — kind cluster in Docker |
+---
 
-## Bootstrap (create a cluster)
+## 1. Choose your path
 
-| Doc | Cloud |
-|-----|-------|
-| [QUICKSTART.md](QUICKSTART.md) | AWS — plug-and-play script |
-| [azure.md](azure.md) | Azure — plug-and-play script |
-| [bootstrap.md](bootstrap.md) | AWS — detailed manual Terraform steps |
+How you work with this repository depends on your environment.
 
-## Verify and operate
+| Document | When to use |
+|----------|-------------|
+| [paths/cloud-agent.md](paths/cloud-agent.md) | **Default** — Cursor Cloud Agent (`from-here.sh`); no local Docker |
+| [paths/codespaces.md](paths/codespaces.md) | Browser lab via GitHub Codespaces |
+| [paths/ci-only.md](paths/ci-only.md) | Contribute via pull request and CI only; no cluster |
+| [paths/local-dev.md](paths/local-dev.md) | Local kind cluster; no cloud cost |
 
-| Doc | Topic |
-|-----|-------|
-| [verify.md](verify.md) | Health checks (local, AWS, Azure) |
-| [upgrades.md](upgrades.md) | Kubernetes and platform upgrades |
-| [alerting.md](alerting.md) | Prometheus rules and Alertmanager |
-| [cert-manager-provider.md](cert-manager-provider.md) | Replace bootstrap CA with production PKI |
+---
 
-## CI and automation
+## 2. Bootstrap a cluster
 
-| Doc | Topic |
-|-----|-------|
-| [delivery.md](delivery.md) | CI → staging → production promotion |
-| [github-actions-aws-oidc.md](github-actions-aws-oidc.md) | Terraform plan on PRs (AWS) |
-| [github-actions-azure-oidc.md](github-actions-azure-oidc.md) | Terraform plan on PRs (Azure) |
+| Document | Scope |
+|----------|--------|
+| [bootstrap/aws-quickstart.md](bootstrap/aws-quickstart.md) | AWS EKS — plug-and-play script |
+| [bootstrap/aws-manual.md](bootstrap/aws-manual.md) | AWS EKS — manual Terraform |
+| [bootstrap/azure.md](bootstrap/azure.md) | Azure AKS — script and manual steps |
+| [bootstrap/mechanics.md](bootstrap/mechanics.md) | Kind smoke waves, istio-csr order, bootstrap scripts |
 
-## Architecture
+After bootstrap: [operations/verify.md](operations/verify.md).
 
-| Doc | Topic |
-|-----|-------|
-| [architecture.md](architecture.md) | Topology, platform bundle, security model |
+---
 
-## Scripts reference
+## 3. Operate the platform
 
-| Script | Purpose |
-|--------|---------|
-| `scripts/bootstrap-local.sh` | kind + Argo CD + GitOps ($0); phases: `argocd`, `cluster-root`, `wait` |
-| `scripts/wait-for-app.sh` | Wait for one Argo CD Application |
-| `scripts/wait-for-apps.sh` | Wait for a dependency wave (parallel apps, Kind smoke) |
-| `scripts/bootstrap-aws.sh` | AWS EKS staging/prod |
-| `scripts/bootstrap-azure.sh` | Azure AKS staging/prod |
-| `scripts/verify-platform.sh` | Post-bootstrap health checks |
-| `scripts/from-here.sh` | **Cloud Agent** — check, lab, push, status from Cursor |
-| `scripts/start-lab.sh` | **Option A** — bootstrap + verify in one command |
-| `scripts/shutdown-lab.sh` | Destroy kind + optionally stop Codespace |
-| `scripts/ci-validate.sh` | **Option B** — run CI checks locally before push |
-| `scripts/scaffold-application-repo.sh` | Copy `templates/application/` into a new app repo directory |
-| `scripts/setup-github-oidc-aws.sh` | One-time AWS OIDC for CI plan |
+| Document | Topic |
+|----------|--------|
+| [operations/verify.md](operations/verify.md) | Post-deploy health checks |
+| [operations/upgrades.md](operations/upgrades.md) | Kubernetes and platform upgrades |
+| [operations/alerting.md](operations/alerting.md) | Prometheus rules and Alertmanager |
+| [operations/cert-manager-provider.md](operations/cert-manager-provider.md) | Production PKI and issuers |
+| [operations/quota-automation.md](operations/quota-automation.md) | Codespaces shutdown and CI quota guards |
 
-## GitOps configuration
+---
 
-| File | Purpose |
-|------|---------|
-| `gitops/clusters/staging/cluster.env` | Repo URL, branch, gateway hostname (staging) |
-| `gitops/clusters/prod/cluster.env` | Same for prod |
-| `gitops/clusters/*/applications.yaml` | Argo CD Application definitions |
+## 4. Delivery and CI integration
 
-Kustomize replaces `GITOPS_REPO_URL` and `GITOPS_TARGET_REVISION` from `cluster.env` into labeled Applications.
+| Document | Topic |
+|----------|--------|
+| [delivery/release-pipeline.md](delivery/release-pipeline.md) | CI → staging → production promotion |
+| [delivery/github-actions-aws-oidc.md](delivery/github-actions-aws-oidc.md) | AWS OIDC for Terraform plan on PRs |
+| [delivery/github-actions-azure-oidc.md](delivery/github-actions-azure-oidc.md) | Azure OIDC for Terraform plan on PRs |
+
+---
+
+## 5. Reference
+
+| Document | Topic |
+|----------|--------|
+| [reference/architecture.md](reference/architecture.md) | Topology, platform bundle, security model |
+| [reference/project-status.md](reference/project-status.md) | Phase-1 completeness and maturity |
+| [reference/scripts.md](reference/scripts.md) | Bootstrap and validation scripts |
+| [reference/gitops-configuration.md](reference/gitops-configuration.md) | Cluster env files and Argo CD roots |
+
+---
+
+## 6. Applications
+
+| Document | Topic |
+|----------|--------|
+| [applications/kubeship.md](applications/kubeship.md) | KubeShip shipping API and web console |
+| [applications/application-project.md](applications/application-project.md) | Adding applications and optional separate repos |
+
+---
+
+## Document conventions
+
+- **Formal tone** — imperative steps, precise terminology, no marketing language.
+- **Single source of truth** — one owner per topic; cross-link instead of duplicating tables or command blocks.
+- **Navigation** — every page states its scope in the opening paragraph and links to prerequisites and next steps.
+- **Future contributions** — follow [.cursor/rules/documentation.mdc](../.cursor/rules/documentation.mdc).

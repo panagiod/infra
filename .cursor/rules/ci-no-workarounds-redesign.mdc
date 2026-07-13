@@ -7,7 +7,7 @@ alwaysApply: true
 
 When driving CI to green, **do not stack bootstrap hacks** to mask a broken model. If the approach requires repeated `kubectl` patches, `ignoreDifferences`, or CI-only env toggles, **stop and redesign**.
 
-See also: `ci-fix-gitops.mdc`, `ci-until-green.mdc`, `ci-pod-diagnostics.mdc`, `docs/bootstrap.md`.
+See also: `ci-fix-gitops.mdc`, `ci-until-green.mdc`, `ci-pod-diagnostics.mdc`, `docs/bootstrap/mechanics.md`.
 
 ## Non-negotiables
 
@@ -18,7 +18,7 @@ See also: `ci-fix-gitops.mdc`, `ci-until-green.mdc`, `ci-pod-diagnostics.mdc`, `
 | Use **fresh kind cluster per CI run** (`RECREATE_CLUSTER=true`) | Avoids stale ReplicaSets and webhook state from failed runs |
 | Let **Istio gateway injection** resolve `image: auto` after istiod is healthy | Chart design; no `kubectl set image` |
 | Configure **istio-csr before istiod** with `caAddress` + `ENABLE_CA_SERVER=false` | cert-manager documented install order |
-| **Document** bootstrap semantics when changing them | `docs/bootstrap.md`, `docs/architecture.md` |
+| **Document** bootstrap semantics when changing them | `docs/bootstrap/mechanics.md`, `docs/reference/architecture.md` |
 
 ## Workarounds — never ship
 
@@ -44,7 +44,7 @@ Redesign checklist:
 
 1. State the **broken model** (e.g. “all apps sync at step 2”).
 2. Propose **target model** (e.g. “one Application CR per wave”).
-3. Update **docs/bootstrap.md** and validation scripts.
+3. Update **docs/bootstrap/mechanics.md** and validation scripts.
 4. Remove prior workarounds in the same PR.
 5. Run Kind smoke to green on a **fresh** cluster.
 
@@ -53,5 +53,5 @@ Redesign checklist:
 - [ ] No new `kubectl` mutations outside Argo sync / documented one-time cluster bootstrap
 - [ ] No new `ignoreDifferences` without an upstream chart bug link and removal plan
 - [ ] Kind smoke materializes apps **per wave**, not in bulk at step 2
-- [ ] `docs/bootstrap.md` updated if bootstrap semantics changed
+- [ ] `docs/bootstrap/mechanics.md` updated if bootstrap semantics changed
 - [ ] I would deploy the same GitOps to staging/prod without CI-only exceptions

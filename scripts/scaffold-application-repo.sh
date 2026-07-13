@@ -65,6 +65,6 @@ Next steps:
 
 After first release tag (v0.1.0):
   - Update deploy/overlays/staging/kustomization.yaml image tag
-  - Add Argo CD Application in infra (see docs/application-project.md)
+  - Add Argo CD Application in infra (see docs/applications/application-project.md)
 
 EOF

@@ -1,0 +1,70 @@
+---
+description: Standards for all documentation in docs/ and README files
+globs:
+  - docs/**
+  - README.md
+  - apps/**/README.md
+  - templates/**/README.md
+alwaysApply: true
+---
+
+# Documentation standards
+
+Apply these rules when creating or editing documentation in this repository.
+
+## Structure
+
+1. **Hierarchy** — Place documents under `docs/` by purpose:
+   - `start/` — entry and routing only
+   - `paths/` — how to work (agent, Codespaces, CI-only, local)
+   - `bootstrap/` — cluster creation
+   - `operations/` — run, verify, upgrade, alert
+   - `delivery/` — CI integration and release promotion
+   - `reference/` — architecture, scripts, GitOps config, project status
+   - `applications/` — application-specific docs
+
+2. **Index** — `docs/README.md` is the sole navigation index. Do not duplicate its tables in other files.
+
+3. **Single source of truth** — Each topic has one owner document. Other pages link to it; do not copy command blocks, workflow tables, or install-order tables.
+
+## Writing style
+
+- **Formal tone** — Use complete sentences. Prefer "Configure the variable" over "Just set this."
+- **Scope first** — Open with one paragraph stating audience, prerequisites, and what the page covers.
+- **Imperative steps** — Numbered or bulleted procedures for actions; tables for reference data.
+- **No duplication** — If content exists in another doc, link with a relative path (e.g. `[verify](../operations/verify.md)`).
+- **No marketing** — Avoid superlatives and filler. State facts and procedures.
+
+## Navigation
+
+Every document must include:
+
+- **Prerequisites** (when non-obvious)
+- **Related documents** — "See also" or "Next steps" with links at the end
+- **Correct relative links** — From `docs/applications/foo.md`, link to `../operations/verify.md`, not flat `verify.md`
+
+## Naming
+
+- **Filenames** — kebab-case lowercase only (`aws-quickstart.md`, not `QUICKSTART.md`)
+- **Titles** — Title Case in the H1; match the filename topic
+- **Path labels** — Use consistent names: Cloud Agent (default), Codespaces (Option A), CI-only (Option B)
+
+## Code and commands
+
+- Show full commands; do not omit required flags
+- State which directory to run from when not repo root
+- Document environment variables in tables where multiple are required
+
+## When adding a new document
+
+1. Choose the correct subdirectory (do not add flat files under `docs/`)
+2. Add one row to the appropriate section in `docs/README.md`
+3. Link from the relevant path or operations page — not from `start/getting-started.md` command blocks
+4. Do not repeat platform install order; link to `reference/architecture.md`
+
+## Anti-patterns (do not)
+
+- Duplicate golden-path command blocks in `start/getting-started.md`
+- List the same CI workflow table in more than one file (owner: `paths/ci-only.md` or `delivery/release-pipeline.md`)
+- Mislabel bootstrap mechanics as "AWS manual Terraform" (owner: `bootstrap/mechanics.md`)
+- Create orphan pages with no inbound link from `docs/README.md`

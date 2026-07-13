@@ -1,10 +1,10 @@
 # AWS quick start
 
-> **Not sure which path to use?** See [getting-started.md](getting-started.md).
+> **Not sure which path to use?** See [getting-started.md](../start/getting-started.md).
 
 Plug-and-play bootstrap for **AWS EKS** staging (and optionally prod). Platform components deploy via Argo CD after the cluster exists.
 
-For manual Terraform steps see [bootstrap.md](bootstrap.md). For Azure see [azure.md](azure.md).
+For manual Terraform steps see [aws-manual.md](aws-manual.md). For Azure see [azure.md](azure.md).
 
 ## Prerequisites
 
@@ -49,15 +49,15 @@ The script: checks tools → optional remote state → generates config → two-
 ./scripts/verify-platform.sh
 ```
 
-Full checklist: [verify.md](verify.md)
+Full checklist: [verify.md](../operations/verify.md)
 
 ## CI: Terraform plan on PRs
 
-One-time setup: [github-actions-aws-oidc.md](github-actions-aws-oidc.md) or `./scripts/setup-github-oidc-aws.sh`
+One-time setup: [github-actions-aws-oidc.md](../delivery/github-actions-aws-oidc.md) or `./scripts/setup-github-oidc-aws.sh`
 
 ## Next steps
 
 - Tighten `cluster_endpoint_public_access_cidrs` in prod `terraform.tfvars`
-- Configure alerting: [alerting.md](alerting.md)
-- Replace bootstrap CA: [cert-manager-provider.md](cert-manager-provider.md)
-- No cloud budget? Use [local-dev.md](local-dev.md) instead
+- Configure alerting: [alerting.md](../operations/alerting.md)
+- Replace bootstrap CA: [cert-manager-provider.md](../operations/cert-manager-provider.md)
+- No cloud budget? Use [local-dev.md](../paths/local-dev.md) instead

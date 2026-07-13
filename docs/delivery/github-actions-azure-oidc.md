@@ -22,7 +22,7 @@ sequenceDiagram
 
 ### 1. Create remote state storage
 
-Use an Azure Storage account and blob container for Terraform state (see [azure.md](azure.md) or `scripts/bootstrap-azure.sh` with `CREATE_STATE=true`).
+Use an Azure Storage account and blob container for Terraform state (see [azure.md](../bootstrap/azure.md) or `scripts/bootstrap-azure.sh` with `CREATE_STATE=true`).
 
 ### 2. Apply the OIDC bootstrap stack
 

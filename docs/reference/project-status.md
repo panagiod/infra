@@ -7,7 +7,7 @@ Honest assessment of what this repository delivers today.
 A **multi-cloud Kubernetes platform scaffold** with:
 
 - Terraform for **AWS EKS** and **Azure AKS** (staging + prod)
-- Shared **GitOps** platform (Argo CD, Istio mTLS, cert-manager, monitoring, Kyverno, mtls-demo)
+- Shared **GitOps** platform (Argo CD, Istio mTLS, cert-manager, monitoring, Kyverno, Couchbase, KubeShip, mtls-demo)
 - Plug-and-play bootstrap scripts (AWS, Azure, local kind)
 - CI validation (Terraform, Kustomize, Kind smoke tests, OIDC plan workflows)
 
@@ -17,11 +17,11 @@ A **multi-cloud Kubernetes platform scaffold** with:
 |------|--------|
 | Terraform modules (VPC/EKS, VNet/AKS) | Done |
 | Argo CD bootstrap via Terraform | Done |
-| GitOps platform bundle | Done |
+| GitOps platform bundle (16 Applications) | Done |
 | Bootstrap scripts | Done (AWS, Azure, local) |
 | CI fmt/validate/kustomize | Done |
 | Kind smoke tests on PRs | Done |
-| Documentation structure | In progress — see [getting-started.md](getting-started.md) |
+| Documentation structure | Reorganized — see [README.md](../README.md) and [MIGRATION.md](../MIGRATION.md) |
 
 ## What is lab / scaffold (not production-proven)
 

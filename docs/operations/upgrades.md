@@ -35,7 +35,7 @@ Same flow in `terraform/environments/azure/staging` and `azure/prod` — update 
 
 Platform Helm charts resolve to the **latest stable version** from each upstream Helm repository (no `targetRevision` pin). This is intentional for phase 1; pin versions before production or document promotions in the table below.
 
-Git sources use `cluster.env` for repo URL and branch. See [docs/README.md](README.md#gitops-configuration).
+Git sources use `cluster.env` for repo URL and branch. See [reference/gitops-configuration.md](../reference/gitops-configuration.md).
 
 ## Istio revision tags (advanced)
 

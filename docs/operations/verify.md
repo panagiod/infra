@@ -41,18 +41,27 @@ Or configure kubectl context manually and set `LOCAL=true`.
 
 ## What it checks
 
+The script runs these checks in order (see `scripts/verify-platform.sh` for the authoritative list):
+
 | Check | Pass criteria |
 |-------|----------------|
 | Nodes | At least one `Ready` node |
 | Argo CD | `argocd-server` Running |
-| cluster-root | Application exists (skipped in `LOCAL=true` / Kind smoke wave bootstrap) |
-| Platform apps | cert-manager, Istio, monitoring, mtls-demo, etc. |
-| Workloads | Key pods Running in cert-manager, istio-system, mtls-demo |
-| mTLS | `PeerAuthentication` default mode `STRICT` |
+| cluster-root | Application exists, Synced/Healthy (**skipped** when `LOCAL=true`) |
+| Platform Applications | `cert-manager`, `platform-ca`, `istiod`, `istio-csr`, `istio-gateway`, `istio-ingress-tls`, `istio-policies`, `monitoring`, `monitoring-alerts`, `mtls-demo`, `kubeship` |
+| Workloads | Running pods in `cert-manager`, `istio-system` (istiod, gateway), `mtls-demo`, `kubeship` |
 | Ingress TLS | `istio-ingressgateway-certs` Certificate Ready |
-| Demo | `frontend` → `backend` request over mesh |
+| mTLS policy | `PeerAuthentication` default mode `STRICT` in `istio-system` |
+| mTLS demo | `frontend` → `backend` request over mesh |
 
-Warnings (not hard failures) appear when apps are still syncing — **wait 10–15 minutes** on first run and re-try.
+**Not checked today:** `istio-base`, `kyverno`, `platform-policies`, `couchbase-config`, `couchbase` — confirm these in Argo CD manually if needed:
+
+```bash
+kubectl -n argocd get applications
+kubectl -n couchbase get pods
+```
+
+Warnings (not hard failures) appear when apps are still syncing — wait 10–15 minutes on first run and re-try.
 
 ---
 
@@ -91,7 +100,7 @@ export TF_LOCK_TABLE="your-org-terraform-locks"
 ./scripts/setup-github-oidc-aws.sh
 ```
 
-Details: [github-actions-aws-oidc.md](github-actions-aws-oidc.md)
+Details: [github-actions-aws-oidc.md](../delivery/github-actions-aws-oidc.md)
 
 ---
 
@@ -99,8 +108,9 @@ Details: [github-actions-aws-oidc.md](github-actions-aws-oidc.md)
 
 | Workflow | Trigger |
 |----------|---------|
-| Kind smoke | PR changes under `gitops/**` |
-| Terraform plan (AWS) | PR changes under `terraform/environments/staging|prod/` + OIDC vars set |
+| Kind smoke | PR changes under `gitops/**` or `apps/kubeship/**` |
+| KubeShip tests | PR changes under `apps/kubeship/**` |
+| Terraform plan (AWS) | PR changes under `terraform/environments/staging\|prod/` + OIDC vars set |
 | Terraform plan (Azure) | PR changes under `terraform/environments/azure/**` + Azure OIDC vars |
 
 ---
@@ -115,4 +125,4 @@ Details: [github-actions-aws-oidc.md](github-actions-aws-oidc.md)
 | Plan workflow skipped | Run OIDC setup; confirm GitHub repository variables |
 | Nodes NotReady (cloud) | Check Terraform node pool / subnet config |
 | kind context not found | Run `./scripts/bootstrap-local.sh` first |
-| Timeouts on local | Increase Docker RAM; see [local-dev.md](local-dev.md) |
+| Timeouts on local | Increase Docker RAM; see [local-dev.md](../paths/local-dev.md) |

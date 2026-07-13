@@ -34,7 +34,7 @@ cat <<'EOF'
 ║    STOP_CODESPACE=true ./scripts/shutdown-lab.sh             ║
 ║    Auto: 15 min idle stop · 2 h max open (devcontainer)      ║
 ║                                                              ║
-║  Docs: docs/codespaces.md · docs/ci-only.md                  ║
+║  Docs: docs/paths/codespaces.md · docs/paths/ci-only.md                  ║
 ╚══════════════════════════════════════════════════════════════╝
 
 EOF

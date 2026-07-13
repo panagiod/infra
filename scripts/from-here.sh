@@ -187,7 +187,7 @@ Examples (agent runs these for you):
   ./scripts/from-here.sh lab
   ./scripts/from-here.sh push
 
-Docs: docs/cloud-agent.md
+Docs: docs/paths/cloud-agent.md
 EOF
 }
 

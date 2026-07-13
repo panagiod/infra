@@ -161,7 +161,7 @@ main() {
   validate_terraform
   log "All checks passed — safe to push and open a PR"
   printf '\nNext: git push origin <branch> → open PR → CI runs automatically\n'
-  printf 'Guide: docs/ci-only.md\n\n'
+  printf 'Guide: docs/paths/ci-only.md\n\n'
 }
 
 main "$@"

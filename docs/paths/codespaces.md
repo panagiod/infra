@@ -75,7 +75,7 @@ DESTROY=true ./scripts/bootstrap-local.sh
 | **Max open duration** | 2 hours total |
 | **On stop** | kind cluster deleted + Docker pruned |
 
-Full details: [quota-automation.md](quota-automation.md)
+Full details: [quota-automation.md](../operations/quota-automation.md)
 
 ## Known limitations
 
