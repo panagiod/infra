@@ -49,11 +49,11 @@ Repeat edits on the same branch; each push re-runs CI.
 
 | Workflow | Triggers when you change | What it does | Typical time |
 |----------|--------------------------|--------------|--------------|
-| [gitops.yml](../.github/workflows/gitops.yml) | `gitops/**` | `kustomize build` all overlays | ~1–2 min |
-| [kind-smoke.yml](../.github/workflows/kind-smoke.yml) | `gitops/**`, bootstrap scripts | Ephemeral kind cluster + full bootstrap | ~15–30 min |
-| [terraform.yml](../.github/workflows/terraform.yml) | `terraform/**` | `terraform fmt` + `validate` | ~3–5 min |
-| [terraform-plan.yml](../.github/workflows/terraform-plan.yml) | `terraform/**` (AWS) | Plan against AWS — **needs OIDC vars** | ~5 min |
-| [terraform-plan-azure.yml](../.github/workflows/terraform-plan-azure.yml) | `terraform/**` (Azure) | Plan against Azure — **needs OIDC vars** | ~5 min |
+| [gitops.yml](../../.github/workflows/gitops.yml) | `gitops/**` | `kustomize build` all overlays | ~1–2 min |
+| [kind-smoke.yml](../../.github/workflows/kind-smoke.yml) | `gitops/**`, bootstrap scripts | Ephemeral kind cluster + full bootstrap | ~15–30 min |
+| [terraform.yml](../../.github/workflows/terraform.yml) | `terraform/**` | `terraform fmt` + `validate` | ~3–5 min |
+| [terraform-plan.yml](../../.github/workflows/terraform-plan.yml) | `terraform/**` (AWS) | Plan against AWS — **needs OIDC vars** | ~5 min |
+| [terraform-plan-azure.yml](../../.github/workflows/terraform-plan-azure.yml) | `terraform/**` (Azure) | Plan against Azure — **needs OIDC vars** | ~5 min |
 
 **Kind smoke is the slowest** — it only runs when GitOps-related files change. Docs-only PRs skip it.
 
@@ -111,7 +111,7 @@ Image preflight alone:
 - **Avoid touching `gitops/**`** if you only change docs — kind-smoke won't run
 - Duplicate runs on the same PR are **cancelled automatically** (`concurrency`)
 
-See [quota-automation.md](quota-automation.md) for full quota details.
+See [quota-automation.md](../operations/quota-automation.md) for full quota details.
 
 ---
 
@@ -147,6 +147,6 @@ No kubectl, no Docker, no AWS.
 
 ## Related
 
-- [getting-started.md](getting-started.md) — A + B golden path
-- [quota-automation.md](quota-automation.md) — shutdown and CI minute guards
-- [pull request template](../.github/pull_request_template.md) — PR checklist
+- [getting-started.md](../start/getting-started.md) — A + B golden path
+- [quota-automation.md](../operations/quota-automation.md) — shutdown and CI minute guards
+- [pull request template](../../.github/pull_request_template.md) — PR checklist

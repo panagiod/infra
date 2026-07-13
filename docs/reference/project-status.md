@@ -21,7 +21,7 @@ A **multi-cloud Kubernetes platform scaffold** with:
 | Bootstrap scripts | Done (AWS, Azure, local) |
 | CI fmt/validate/kustomize | Done |
 | Kind smoke tests on PRs | Done |
-| Documentation structure | In progress — see [getting-started.md](getting-started.md) |
+| Documentation structure | Reorganized — see [README.md](../README.md) and [MIGRATION.md](../MIGRATION.md) |
 
 ## What is lab / scaffold (not production-proven)
 

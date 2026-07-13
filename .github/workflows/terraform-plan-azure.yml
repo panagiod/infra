@@ -21,7 +21,7 @@ jobs:
   plan:
     runs-on: ubuntu-latest
     timeout-minutes: 30
-    # Requires repository variables — see docs/github-actions-azure-oidc.md
+    # Requires repository variables — see docs/delivery/github-actions-azure-oidc.md
     if: vars.AZURE_CLIENT_ID != '' && vars.TF_STATE_STORAGE_ACCOUNT != ''
     strategy:
       matrix:

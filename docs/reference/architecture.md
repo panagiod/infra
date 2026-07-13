@@ -42,7 +42,7 @@ Each environment syncs the same `gitops/platform/` tree; only Terraform (network
 
 ## Platform bundle (install order)
 
-Bootstrap order is documented here and enforced in **Kind smoke** by wave-by-wave Application materialization (`wait-for-app.sh` / `wait-for-apps.sh`; see [bootstrap.md](bootstrap.md)). On real clusters, **cluster-root** syncs all child Application CRs from Git; Argo CD does not use `spec.dependsOn` on Application CRs.
+Bootstrap order is documented here and enforced in **Kind smoke** by wave-by-wave Application materialization (`wait-for-app.sh` / `wait-for-apps.sh`; see [bootstrap.md](../bootstrap/mechanics.md)). On real clusters, **cluster-root** syncs all child Application CRs from Git; Argo CD does not use `spec.dependsOn` on Application CRs.
 
 | Order | Component | Namespace |
 |------|-----------|-----------|
@@ -70,7 +70,7 @@ flowchart LR
   CM --> ING["Gateway TLS cert"]
 ```
 
-Phase 1 uses a **platform CA ClusterIssuer** (bootstrap self-signed → CA issuer). Replace with your PKI without changing the mesh layout. See [cert-manager-provider.md](cert-manager-provider.md).
+Phase 1 uses a **platform CA ClusterIssuer** (bootstrap self-signed → CA issuer). Replace with your PKI without changing the mesh layout. See [cert-manager-provider.md](../operations/cert-manager-provider.md).
 
 ## Networking
 
@@ -93,7 +93,7 @@ Restrict Kubernetes API access in prod via `cluster_endpoint_public_access_cidrs
 ## Observability
 
 - Prometheus scrapes Kubernetes, Istio, and cert-manager metrics
-- Grafana dashboards; Alertmanager routes (configure receivers — see [alerting.md](alerting.md))
+- Grafana dashboards; Alertmanager routes (configure receivers — see [alerting.md](../operations/alerting.md))
 - Certificate expiry alerts in `gitops/platform/monitoring/alerts/`
 
 ## Security baseline
@@ -111,4 +111,4 @@ Restrict Kubernetes API access in prod via `cluster_endpoint_public_access_cidrs
 
 ## Upgrade strategy
 
-See [upgrades.md](upgrades.md). Promote staging → prod after soak and `verify-platform.sh`.
+See [upgrades.md](../operations/upgrades.md). Promote staging → prod after soak and `verify-platform.sh`.

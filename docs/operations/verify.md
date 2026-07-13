@@ -91,7 +91,7 @@ export TF_LOCK_TABLE="your-org-terraform-locks"
 ./scripts/setup-github-oidc-aws.sh
 ```
 
-Details: [github-actions-aws-oidc.md](github-actions-aws-oidc.md)
+Details: [github-actions-aws-oidc.md](../delivery/github-actions-aws-oidc.md)
 
 ---
 
@@ -115,4 +115,4 @@ Details: [github-actions-aws-oidc.md](github-actions-aws-oidc.md)
 | Plan workflow skipped | Run OIDC setup; confirm GitHub repository variables |
 | Nodes NotReady (cloud) | Check Terraform node pool / subnet config |
 | kind context not found | Run `./scripts/bootstrap-local.sh` first |
-| Timeouts on local | Increase Docker RAM; see [local-dev.md](local-dev.md) |
+| Timeouts on local | Increase Docker RAM; see [local-dev.md](../paths/local-dev.md) |

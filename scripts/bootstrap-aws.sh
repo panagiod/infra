@@ -155,7 +155,7 @@ main() {
       ;;
   esac
 
-  log "Done. See docs/verify.md and docs/getting-started.md."
+  log "Done. See docs/operations/verify.md and docs/start/getting-started.md."
 }
 
 main "$@"

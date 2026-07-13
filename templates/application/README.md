@@ -42,7 +42,7 @@ Release workflow pushes to `ghcr.io/<owner>/<repo>:<tag>`. After tagging, update
 3. Append the Application to `gitops/clusters/staging/applications.yaml` **after** platform apps (see install order in infra).
 4. Repeat for prod when ready.
 
-See [docs/application-project.md](https://github.com/panagiod/infra/blob/main/docs/application-project.md) in the infra repo for the full checklist.
+See [docs/applications/application-project.md](https://github.com/panagiod/infra/blob/main/docs/applications/application-project.md) in the infra repo for the full checklist.
 
 ## Local checks
 

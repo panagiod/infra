@@ -1,6 +1,6 @@
 # Azure
 
-> **Path overview:** [getting-started.md](getting-started.md)
+> **Path overview:** [getting-started.md](../start/getting-started.md)
 
 Azure support mirrors the AWS layout: **Terraform creates the cluster and bootstraps Argo CD**, **Argo CD deploys the platform** from the shared `gitops/` tree.
 
@@ -111,7 +111,7 @@ key                  = "infra/azure/staging/terraform.tfstate"
 | `terraform.yml` | `fmt` + `validate` for AWS and Azure |
 | `terraform-plan-azure.yml` | `terraform plan` on Azure PRs using OIDC |
 
-Set up OIDC once: [github-actions-azure-oidc.md](github-actions-azure-oidc.md)
+Set up OIDC once: [github-actions-azure-oidc.md](../delivery/github-actions-azure-oidc.md)
 
 ## AWS vs Azure differences
 

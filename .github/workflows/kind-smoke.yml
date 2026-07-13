@@ -21,7 +21,7 @@ on:
       - 'scripts/verify-platform.sh'
       - 'scripts/from-here.sh'
       - 'scripts/monitor-ci.sh'
-      - 'docs/bootstrap.md'
+      - 'docs/bootstrap/mechanics.md'
       - 'apps/kubeship/**'
       - '.github/workflows/kind-smoke.yml'
   workflow_dispatch:

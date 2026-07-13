@@ -77,7 +77,7 @@ push → fast checks (ci-validate) → Kind smoke in Actions
 | `lab` (remote) | Uses **GitHub Actions minutes** (~15–30 min per run) |
 | Codespaces | **Not used** when you work only through the agent |
 
-See [quota-automation.md](quota-automation.md).
+See [quota-automation.md](../operations/quota-automation.md).
 
 ## Compared to Option A and B
 
@@ -93,6 +93,6 @@ The agent environment uses `gh` (GitHub CLI). If a command fails with auth error
 
 ## Related
 
-- [getting-started.md](getting-started.md)
+- [getting-started.md](../start/getting-started.md)
 - [ci-only.md](ci-only.md)
 - [codespaces.md](codespaces.md)

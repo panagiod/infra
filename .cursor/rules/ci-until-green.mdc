@@ -38,4 +38,4 @@ Unless the user explicitly opts out (e.g. "don't wait for CI", "status only", "s
 ./scripts/from-here.sh monitor    # when user wants to wait for completion
 ```
 
-See `docs/cloud-agent.md`.
+See `docs/paths/cloud-agent.md`.

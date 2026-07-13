@@ -23,4 +23,4 @@
 | `terraform/**` | Terraform fmt + validate |
 | `docs/**` only | Usually none (fast merge) |
 
-Details: [docs/ci-only.md](../docs/ci-only.md)
+Details: [docs/paths/ci-only.md](../docs/paths/ci-only.md)

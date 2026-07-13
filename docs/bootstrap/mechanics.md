@@ -1,6 +1,8 @@
-# Bootstrap and Kind smoke
+# Bootstrap mechanics
 
-How the platform is installed on **kind** (CI), **local dev**, and **real clusters** (EKS/AKS).
+How the platform is installed on **kind** (CI), **local development**, and **real clusters** (EKS/AKS).
+
+For cloud bootstrap procedures, see [aws-quickstart.md](aws-quickstart.md), [aws-manual.md](aws-manual.md), or [azure.md](azure.md).
 
 ## Models
 

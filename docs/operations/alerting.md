@@ -2,7 +2,7 @@
 
 Configure Prometheus rules and Alertmanager receivers after the monitoring stack syncs.
 
-See also: [getting-started.md](getting-started.md) · [verify.md](verify.md)
+See also: [getting-started.md](../start/getting-started.md) · [verify.md](verify.md)
 
 ## Prometheus rules
 

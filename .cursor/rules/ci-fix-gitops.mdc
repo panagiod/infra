@@ -7,7 +7,7 @@ alwaysApply: true
 
 When driving CI to green (see `ci-until-green.mdc`), **never patch symptoms to pass a check**. Every fix must be something we would ship to staging/prod GitOps, not a one-off for Actions.
 
-See also: `dependencies.mdc`, `git-workflow.mdc`, `ci-pod-diagnostics.mdc`, `ci-no-workarounds-redesign.mdc`, `docs/bootstrap.md`, `docs/architecture.md`.
+See also: `dependencies.mdc`, `git-workflow.mdc`, `ci-pod-diagnostics.mdc`, `ci-no-workarounds-redesign.mdc`, `docs/bootstrap/mechanics.md`, `docs/reference/architecture.md`.
 
 ## Investigate before changing anything
 
@@ -32,7 +32,7 @@ Do **not** push a fix based only on “it timed out” or “status was Unknown�
 | Use `targetRevision: '*'` for third-party Helm (per `dependencies.mdc`) | Latest stable without semver pins |
 | Align **git revision** for PR validation (`GITOPS_REVISION` → `cluster.env` replacements) | CI must test the branch under review |
 | Update **validation** (`validate-gitops-logic.sh`) when order or invariants change | Prevents regressions before Kind smoke |
-| Document behavior in `docs/architecture.md` when bootstrap semantics change | Keeps humans and agents aligned |
+| Document behavior in `docs/reference/architecture.md` when bootstrap semantics change | Keeps humans and agents aligned |
 
 ## Workarounds — do not use
 
