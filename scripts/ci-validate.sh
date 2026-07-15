@@ -108,6 +108,8 @@ validate_gitops() {
     gitops/apps/kubeship/overlays/prod
     gitops/platform/couchbase/overlays/staging
     gitops/platform/couchbase/overlays/prod
+    gitops/platform/couchbase-cluster/overlays/staging
+    gitops/platform/couchbase-cluster/overlays/prod
     gitops/platform/istio/ingress-tls/overlays/staging
     gitops/platform/istio/ingress-tls/overlays/prod
     gitops/platform/monitoring/alerts

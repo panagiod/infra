@@ -194,15 +194,15 @@ app_workload_ready() {
 }
 
 couchbase_sdk_ready() {
-  local cluster_ready ready_members bucket_names
-  cluster_ready="$(kubectl -n couchbase get couchbasecluster couchbase -o jsonpath='{.status.conditions[?(@.type=="Ready")].status}' 2>/dev/null || true)"
-  [[ "${cluster_ready}" == "True" ]] && return 0
+  local ready replicas
+  ready="$(kubectl -n couchbase get statefulset couchbase -o jsonpath='{.status.readyReplicas}' 2>/dev/null || echo 0)"
+  replicas="$(kubectl -n couchbase get statefulset couchbase -o jsonpath='{.spec.replicas}' 2>/dev/null || echo 1)"
+  [[ "${ready:-0}" -ge 1 && "${ready}" -eq "${replicas}" ]] || return 1
 
-  ready_members="$(kubectl -n couchbase get couchbasecluster couchbase -o jsonpath='{.status.members.ready[*]}' 2>/dev/null || true)"
-  [[ -n "${ready_members}" ]] || return 1
-
-  bucket_names="$(kubectl -n couchbase get couchbasecluster couchbase -o jsonpath='{.status.buckets[*].name}' 2>/dev/null || true)"
-  [[ " ${bucket_names} " == *" kubeship "* ]]
+  kubectl -n couchbase exec couchbase-0 -- /opt/couchbase/bin/couchbase-cli bucket-list \
+    -c 127.0.0.1 -u "$(kubectl -n couchbase get secret couchbase-admin-secret -o jsonpath='{.data.username}' | base64 -d)" \
+    -p "$(kubectl -n couchbase get secret couchbase-admin-secret -o jsonpath='{.data.password}' | base64 -d)" 2>/dev/null \
+    | grep -q 'kubeship'
 }
 
 app_require_extra_ready() {
@@ -330,22 +330,13 @@ if lines:
 }
 
 app_couchbase_failures() {
-  local unreconcilable error_status msg
-  unreconcilable="$(kubectl -n couchbase get couchbasecluster couchbase -o jsonpath='{.status.conditions[?(@.type=="Unreconcilable")].status}' 2>/dev/null || true)"
-  if [[ "${unreconcilable}" == "True" ]]; then
-    msg="$(kubectl -n couchbase get couchbasecluster couchbase -o jsonpath='{.status.conditions[?(@.type=="Unreconcilable")].message}' 2>/dev/null || true)"
-    printf 'CouchbaseCluster unreconcilable: %s\n' "${msg:-see operator logs}"
-    return 0
-  fi
-  error_status="$(kubectl -n couchbase get couchbasecluster couchbase -o jsonpath='{.status.conditions[?(@.type=="Error")].status}' 2>/dev/null || true)"
-  if [[ "${error_status}" == "True" ]]; then
-    msg="$(kubectl -n couchbase get couchbasecluster couchbase -o jsonpath='{.status.conditions[?(@.type=="Error")].message}' 2>/dev/null || true)"
-    printf 'CouchbaseCluster error: %s\n' "${msg:-see operator logs}"
-    return 0
-  fi
-  if kubectl -n couchbase get events --field-selector involvedObject.name=couchbase,involvedObject.kind=CouchbaseCluster 2>/dev/null \
-    | grep -q 'community edition'; then
-    printf 'CouchbaseCluster: operator rejected Community Edition (pin chart 2.64.1 for CE)\n'
+  local pod msg
+  pod="$(kubectl -n couchbase get pods -l app=couchbase -o jsonpath='{.items[0].metadata.name}' 2>/dev/null || true)"
+  [[ -n "${pod}" ]] || return 1
+
+  if kubectl -n couchbase logs "${pod}" --tail=100 2>/dev/null | grep -qE 'FAILED:|Error encountered'; then
+    msg="$(kubectl -n couchbase logs "${pod}" --tail=20 2>/dev/null | tail -5)"
+    printf 'couchbase/%s: init failed — %s\n' "${pod}" "${msg:-see pod logs}"
     return 0
   fi
   return 1

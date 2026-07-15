@@ -79,3 +79,8 @@ jobs:
 
       - name: Build monitoring alerts
         run: kustomize build gitops/platform/monitoring/alerts
+
+      - name: Build couchbase CE cluster overlays
+        run: |
+          kustomize build gitops/platform/couchbase-cluster/overlays/staging
+          kustomize build gitops/platform/couchbase-cluster/overlays/prod

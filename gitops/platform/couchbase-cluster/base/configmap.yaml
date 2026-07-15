@@ -1,0 +1,40 @@
+# Init script for single-node Couchbase CE (operator requires Enterprise Edition).
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: couchbase-init
+  namespace: couchbase
+data:
+  init.sh: |
+    #!/usr/bin/env bash
+    set -euo pipefail
+
+    MARKER=/opt/couchbase/var/lib/couchbase/.cluster_initialized
+
+    /entrypoint.sh couchbase-server &
+    cb_pid=$!
+
+    until curl -sf http://127.0.0.1:8091/ui/index.html >/dev/null 2>&1; do
+      sleep 2
+    done
+
+    if [[ ! -f "${MARKER}" ]]; then
+      /opt/couchbase/bin/couchbase-cli cluster-init -c 127.0.0.1 \
+        --cluster-username "${COUCHBASE_USERNAME}" \
+        --cluster-password "${COUCHBASE_PASSWORD}" \
+        --services data,index,query \
+        --cluster-ramsize "${CLUSTER_RAM_MB}" \
+        --cluster-index-ramsize "${INDEX_RAM_MB}" \
+        --index-storage-setting default
+
+      /opt/couchbase/bin/couchbase-cli bucket-create -c 127.0.0.1 \
+        --username "${COUCHBASE_USERNAME}" \
+        --password "${COUCHBASE_PASSWORD}" \
+        --bucket kubeship \
+        --bucket-ramsize "${BUCKET_RAM_MB}" \
+        --bucket-type couchbase
+
+      touch "${MARKER}"
+    fi
+
+    wait "${cb_pid}"

@@ -13,20 +13,18 @@ This repository targets **open-source and no-commercial-license** components. Pa
 | Kyverno | Apache 2.0 | OSS | Policy engine |
 | kube-prometheus-stack | Apache 2.0 | OSS | Prometheus, Alertmanager, **Grafana OSS** |
 | MetalLB | Apache 2.0 | OSS | kind LoadBalancer |
-| Couchbase Operator | Apache 2.0 | OSS | Helm chart from couchbase-partners |
-| **Couchbase Server** | [CE license](https://www.couchbase.com/downloads) | **Community Edition** | Pinned: `couchbase/server:community-7.6.0` with operator chart `2.64.1` — **not** Enterprise |
+| Couchbase Server | [CE license](https://www.couchbase.com/downloads) | **Community Edition** | `couchbase/server:community-7.6.0` via StatefulSet — **not** Enterprise |
 | KubeShip | Internal | — | Application in `apps/kubeship/` |
 
 ### Couchbase Community Edition
 
-Enterprise Edition requires a commercial license. GitOps pins the data-plane image explicitly:
+Enterprise Edition and the **Autonomous Operator** require a commercial license (the operator rejects CE at any chart version). This repo deploys CE with a **single-node StatefulSet** (`gitops/platform/couchbase-cluster/`) that auto-initializes the cluster and `kubeship` bucket on first boot.
 
 ```yaml
-cluster:
-  image: couchbase/server:community-7.6.0
+image: couchbase/server:community-7.6.0
 ```
 
-Do not change this to `couchbase/server:8.x` or other enterprise tags without a valid license.
+Do not switch to the operator Helm chart or `couchbase/server:8.x` enterprise tags without a valid license.
 
 ## Tooling (not deployed to clusters)
 
@@ -49,7 +47,7 @@ Do not change this to `couchbase/server:8.x` or other enterprise tags without a 
 
 ## Verification
 
-- **Image pin:** `gitops/clusters/*/applications.yaml` → `couchbase` Application `cluster.image`
+- **Image pin:** `gitops/platform/couchbase-cluster/base/statefulset.yaml` → `couchbase/server:community-7.6.0`
 - **Preflight:** `scripts/ci-check-images.sh` validates rendered images before Kind smoke
 - **App sanity:** `scripts/verify-kubeship.sh` exercises live API + Couchbase-backed shipment flow in-cluster
 

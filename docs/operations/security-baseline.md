@@ -56,7 +56,7 @@ Audit policies surface gaps via Kyverno Policy Reports without blocking Istio si
 
 ### Data plane licensing
 
-Couchbase Server is pinned to **Community Edition** (`couchbase/server:community-7.6.0`) with operator chart **2.64.1** (operator 2.9+ requires Enterprise). See [licenses.md](../reference/licenses.md).
+Couchbase Server is deployed as **Community Edition** (`couchbase/server:community-7.6.0`) via a StatefulSet — the Autonomous Operator requires Enterprise. See [licenses.md](../reference/licenses.md).
 
 ## AWS EKS (Terraform)
 
