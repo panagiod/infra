@@ -63,6 +63,7 @@ After bootstrap: [operations/verify.md](operations/verify.md).
 | [reference/project-status.md](reference/project-status.md) | Phase-1 completeness and maturity |
 | [reference/github-project.md](reference/github-project.md) | GitHub Issues backlog, Project board, sync workflows |
 | [reference/scripts.md](reference/scripts.md) | Bootstrap and validation scripts |
+| [reference/licenses.md](reference/licenses.md) | OSS-only stack policy and Couchbase CE pin |
 | [reference/gitops-configuration.md](reference/gitops-configuration.md) | Cluster env files and Argo CD roots |
 
 ---

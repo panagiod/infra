@@ -56,11 +56,12 @@ func (c *CouchbaseStore) collection() *gocb.Collection {
 	return c.bucket.DefaultCollection()
 }
 
-func (c *CouchbaseStore) Ready(context.Context) error {
+func (c *CouchbaseStore) Ready(ctx context.Context) error {
 	if c.bucket == nil {
 		return ErrNotReady
 	}
-	return nil
+	_, err := c.collection().Exists("carrier::local-courier", &gocb.ExistsOptions{Context: ctx})
+	return err
 }
 
 func (c *CouchbaseStore) ListCarriers(ctx context.Context) ([]models.Carrier, error) {

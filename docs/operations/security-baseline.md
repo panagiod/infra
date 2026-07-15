@@ -48,6 +48,16 @@ Audit policies surface gaps via Kyverno Policy Reports without blocking Istio si
 
 `gitops/apps/kubeship/base/network-policy.yaml` — default-deny with explicit ingress from `istio-system` and egress to `couchbase`, DNS, and Istio control plane.
 
+### Application sanity
+
+`scripts/verify-kubeship.sh` — in-cluster HTTP checks mirroring unit tests: `/health`, carriers list, shipment create/get/track/patch. Runs automatically in Kind smoke (`LOCAL=true`).
+
+`/health` readiness probes call `CouchbaseStore.Ready()` which performs a live KV `Exists` check on seeded carrier data.
+
+### Data plane licensing
+
+Couchbase Server is pinned to **Community Edition** (`couchbase/server:community-7.6.0`). See [licenses.md](../reference/licenses.md).
+
 ## AWS EKS (Terraform)
 
 Module: `terraform/modules/eks/main.tf`

@@ -15,6 +15,14 @@ chmod +x scripts/verify-platform.sh
 LOCAL=true ./scripts/verify-platform.sh
 ```
 
+Runs platform checks **and** `scripts/verify-kubeship.sh` (HTTP API + Couchbase-backed shipment flow).
+
+To run API sanity on a cloud cluster after bootstrap:
+
+```bash
+VERIFY_KUBESHIP=true ./scripts/verify-platform.sh
+```
+
 Uses context `kind-infra-local` (override with `CLUSTER_NAME`).
 
 ### AWS
@@ -53,6 +61,7 @@ The script runs these checks in order (see `scripts/verify-platform.sh` for the 
 | Ingress TLS | `istio-ingressgateway-certs` Certificate Ready |
 | mTLS policy | `PeerAuthentication` default mode `STRICT` in `istio-system` |
 | KubeShip | `kubeship-api` Available with Istio sidecar |
+| KubeShip API sanity | When `LOCAL=true` or `VERIFY_KUBESHIP=true`: `scripts/verify-kubeship.sh` — `/health`, carriers, shipment lifecycle |
 
 **Not checked today:** `istio-base`, `kyverno`, `platform-policies`, `couchbase-config`, `couchbase` — confirm these in Argo CD manually if needed:
 

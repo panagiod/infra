@@ -12,6 +12,7 @@ Authoritative catalog of repository scripts. Path-specific guides link here inst
 | `scripts/wait-for-app.sh` | Wait for one Argo CD Application (Kind smoke waves) |
 | `scripts/wait-for-apps.sh` | Wait for a dependency wave (parallel apps) |
 | `scripts/verify-platform.sh` | Post-bootstrap health checks |
+| `scripts/verify-kubeship.sh` | In-cluster KubeShip API sanity (HTTP + shipment lifecycle via Couchbase) |
 | `scripts/start-lab.sh` | Codespaces — bootstrap and verify in one command |
 | `scripts/shutdown-lab.sh` | Destroy kind cluster; optionally stop Codespace |
 

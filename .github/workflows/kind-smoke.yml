@@ -20,6 +20,7 @@ on:
       - 'scripts/wait-for-app.sh'
       - 'scripts/wait-for-apps.sh'
       - 'scripts/verify-platform.sh'
+      - 'scripts/verify-kubeship.sh'
       - 'scripts/from-here.sh'
       - 'scripts/monitor-ci.sh'
       - 'docs/bootstrap/mechanics.md'
@@ -81,7 +82,7 @@ jobs:
           kubectl cluster-info
 
       - name: Prepare bootstrap scripts
-        run: chmod +x scripts/bootstrap-local.sh scripts/ci-pod-diagnostics.sh scripts/wait-for-app.sh scripts/wait-for-apps.sh scripts/verify-platform.sh
+        run: chmod +x scripts/bootstrap-local.sh scripts/ci-pod-diagnostics.sh scripts/wait-for-app.sh scripts/wait-for-apps.sh scripts/verify-platform.sh scripts/verify-kubeship.sh
 
       - name: Install MetalLB
         run: |

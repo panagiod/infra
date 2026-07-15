@@ -152,6 +152,18 @@ check_kubeship() {
   fi
 }
 
+check_kubeship_api() {
+  if [[ "${LOCAL:-false}" != "true" && "${VERIFY_KUBESHIP:-false}" != "true" ]]; then
+    return 0
+  fi
+  log "KubeShip API sanity (HTTP + Couchbase-backed lifecycle)"
+  if "${REPO_ROOT}/scripts/verify-kubeship.sh"; then
+    pass "KubeShip API sanity checks passed"
+  else
+    fail "KubeShip API sanity checks failed"
+  fi
+}
+
 check_kube_bench() {
   if [[ "${RUN_KUBE_BENCH:-false}" != "true" ]]; then
     return 0
@@ -210,6 +222,7 @@ main() {
   check_ingress_tls
   check_mtls_policy
   check_kubeship
+  check_kubeship_api
   check_kube_bench
   summary
 }
