@@ -12,6 +12,8 @@ DESTROY="${DESTROY:-false}"
 WAIT_TIMEOUT="${WAIT_TIMEOUT:-900}"                   # seconds to wait for core apps
 STRICT_WAIT="${STRICT_WAIT:-false}"                   # exit 1 on wait timeout (CI)
 FAIL_FAST="${FAIL_FAST:-true}"                        # exit early on terminal pod/sync errors (CI)
+FAIL_FAST_STUCK_AFTER="${FAIL_FAST_STUCK_AFTER:-150}" # pod age before startup-stuck fail-fast (CI)
+WAIT_POLL_INTERVAL="${WAIT_POLL_INTERVAL:-5}"         # poll interval while waiting for apps
 BOOTSTRAP_PHASE="${BOOTSTRAP_PHASE:-all}"             # all | argocd | cluster-root | materialize | wait
 WAIT_APP="${WAIT_APP:-}"                              # single app when BOOTSTRAP_PHASE=materialize|wait
 CLUSTER_ROOT_AUTOMATED_SYNC="${CLUSTER_ROOT_AUTOMATED_SYNC:-true}"  # real clusters: cluster-root syncs children from Git
@@ -231,14 +233,22 @@ app_terminal_pod_failures() {
 
   kubectl get pods -n "${ns}" -o json 2>/dev/null | python3 -c "
 import json, sys
+from datetime import datetime, timezone
+
+stuck_after = int(sys.argv[1])
 terminal = {
     'ImagePullBackOff', 'ErrImagePull', 'CrashLoopBackOff',
-    'CreateContainerConfigError', 'InvalidImageName',
+    'CreateContainerConfigError', 'CreateContainerError', 'InvalidImageName',
 }
 data = json.load(sys.stdin)
+now = datetime.now(timezone.utc)
 lines = []
 for pod in data.get('items', []):
     name = pod['metadata']['name']
+    created = pod['metadata'].get('creationTimestamp')
+    age_s = 0
+    if created:
+        age_s = int((now - datetime.fromisoformat(created.replace('Z', '+00:00'))).total_seconds())
     for label, statuses in (('container', pod.get('status', {}).get('containerStatuses')),
                             ('init', pod.get('status', {}).get('initContainerStatuses'))):
         for cs in statuses or []:
@@ -251,9 +261,70 @@ for pod in data.get('items', []):
                 if label == 'init':
                     prefix += ' (init)'
                 lines.append(f'{prefix}: {reason} — {msg}')
+            terminated = (cs.get('state') or {}).get('terminated') or {}
+            if terminated.get('reason') in {'Error', 'OOMKilled'}:
+                cname = cs.get('name', '?')
+                lines.append(f'{name}/{cname}: terminated {terminated.get(\"reason\")}')
+            restarts = cs.get('restartCount', 0)
+            if restarts >= 2 and not cs.get('ready') and age_s >= 90:
+                cname = cs.get('name', '?')
+                lines.append(f'{name}/{cname}: {restarts} restarts and still not ready')
+            if (
+                label == 'container'
+                and pod.get('status', {}).get('phase') == 'Running'
+                and not cs.get('started')
+                and age_s >= stuck_after
+            ):
+                cname = cs.get('name', '?')
+                lines.append(f'{name}/{cname}: startup probe stuck ({age_s}s, not started)')
 if lines:
     print('\n'.join(lines))
+" "${FAIL_FAST_STUCK_AFTER}" 2>/dev/null || true
+}
+
+app_argo_actionable_failure() {
+  local app="$1"
+  kubectl -n argocd get application "${app}" -o json 2>/dev/null | python3 -c "
+import json, sys
+doc = json.load(sys.stdin)
+status = doc.get('status') or {}
+sync = status.get('sync', {}).get('status')
+health = status.get('health', {}).get('status')
+phase = (status.get('operationState') or {}).get('phase')
+if sync == 'Synced' and health == 'Degraded':
+    print(f'Argo CD health=Degraded (sync={sync}, phase={phase or \"unknown\"})')
+    sys.exit(0)
+for res in status.get('resources') or []:
+    rh = (res.get('health') or {}).get('status')
+    if rh in {'Degraded', 'Missing'} and sync == 'Synced':
+        kind = res.get('kind', '?')
+        name = res.get('name', '?')
+        ns = res.get('namespace', '')
+        where = f'{ns}/{name}' if ns else name
+        print(f'Argo resource {kind}/{where} health={rh}')
+        sys.exit(0)
+sys.exit(1)
 " 2>/dev/null || true
+}
+
+app_log_fatal_errors() {
+  local app="$1"
+  local ns
+  ns="$(app_destination_namespace "${app}")"
+  [[ -n "${ns}" ]] || return 0
+
+  case "${app}" in
+    kubeship)
+      local pod
+      for pod in $(kubectl -n "${ns}" get pods -l app=kubeship-api -o jsonpath='{.items[*].metadata.name}' 2>/dev/null); do
+        if kubectl -n "${ns}" logs "${pod}" -c kubeship-api --tail=80 2>/dev/null | grep -q 'store connect failed'; then
+          printf 'kubeship-api/%s: store connect failed (see pod logs)\n' "${pod}"
+          return 0
+        fi
+      done
+      ;;
+  esac
+  return 1
 }
 
 app_permanent_sync_error() {
@@ -277,11 +348,33 @@ fail_fast_if_broken() {
   local app="$1"
   [[ "${FAIL_FAST}" == "true" ]] || return 0
 
-  local pod_issues sync_err
+  local pod_issues sync_err argo_err log_err
   pod_issues="$(app_terminal_pod_failures "${app}")"
   if [[ -n "${pod_issues}" ]]; then
     warn "Terminal pod failure for ${app} — failing fast (FAIL_FAST=true)"
     printf '%s\n' "${pod_issues}" >&2
+    if [[ "${CI_POD_DIAGNOSTICS:-false}" == "true" ]]; then
+      "${REPO_ROOT}/scripts/ci-pod-diagnostics.sh" "${app}" || true
+    fi
+    [[ "${STRICT_WAIT}" == "true" ]] && exit 1
+    return 0
+  fi
+
+  log_err="$(app_log_fatal_errors "${app}" || true)"
+  if [[ -n "${log_err}" ]]; then
+    warn "Application log fatal for ${app} — failing fast (FAIL_FAST=true)"
+    printf '%s\n' "${log_err}" >&2
+    if [[ "${CI_POD_DIAGNOSTICS:-false}" == "true" ]]; then
+      "${REPO_ROOT}/scripts/ci-pod-diagnostics.sh" "${app}" || true
+    fi
+    [[ "${STRICT_WAIT}" == "true" ]] && exit 1
+    return 0
+  fi
+
+  argo_err="$(app_argo_actionable_failure "${app}" || true)"
+  if [[ -n "${argo_err}" ]]; then
+    warn "Argo CD reports failure for ${app} — failing fast (FAIL_FAST=true)"
+    printf '%s\n' "${argo_err}" >&2
     if [[ "${CI_POD_DIAGNOSTICS:-false}" == "true" ]]; then
       "${REPO_ROOT}/scripts/ci-pod-diagnostics.sh" "${app}" || true
     fi
@@ -321,7 +414,7 @@ wait_for_single_app() {
     else
       app_status_line "${app}"
     fi
-    sleep "${WAIT_POLL_INTERVAL:-5}"
+    sleep "${WAIT_POLL_INTERVAL}"
   done
 
   warn "Timed out waiting for ${app}"

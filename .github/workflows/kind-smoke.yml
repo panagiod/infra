@@ -41,7 +41,7 @@ concurrency:
 jobs:
   smoke:
     runs-on: ubuntu-latest
-    timeout-minutes: 90
+    timeout-minutes: 60
     env:
       GITOPS_REPO_URL: https://github.com/${{ github.repository }}
       GITOPS_REVISION: ${{ github.event.inputs.gitops_revision || github.head_ref || github.ref_name }}
@@ -50,6 +50,8 @@ jobs:
       RECREATE_CLUSTER: "true"
       STRICT_WAIT: "true"
       FAIL_FAST: "true"
+      FAIL_FAST_STUCK_AFTER: "150"
+      WAIT_POLL_INTERVAL: "3"
       CI_POD_DIAGNOSTICS: "true"
     steps:
       - uses: actions/checkout@v4
@@ -114,50 +116,50 @@ jobs:
         run: BOOTSTRAP_PHASE=argocd ./scripts/bootstrap-local.sh
 
       - name: Platform 2/10 — Wave 1 cert-manager
-        run: WAIT_TIMEOUT=600 ./scripts/wait-for-app.sh cert-manager
+        run: WAIT_TIMEOUT=420 ./scripts/wait-for-app.sh cert-manager
 
       - name: Platform 3/10 — Wave 2 platform-ca
-        run: WAIT_TIMEOUT=600 ./scripts/wait-for-app.sh platform-ca
+        run: WAIT_TIMEOUT=420 ./scripts/wait-for-app.sh platform-ca
 
       - name: Platform 4/10 — Wave 3 istio-base
-        run: WAIT_TIMEOUT=300 ./scripts/wait-for-app.sh istio-base
+        run: WAIT_TIMEOUT=240 ./scripts/wait-for-app.sh istio-base
 
       - name: Platform 5/10 — Wave 4 istio-csr
-        run: WAIT_TIMEOUT=600 ./scripts/wait-for-app.sh istio-csr
+        run: WAIT_TIMEOUT=420 ./scripts/wait-for-app.sh istio-csr
 
       - name: Platform 6/10 — Wave 5 istiod
-        run: WAIT_TIMEOUT=600 ./scripts/wait-for-app.sh istiod
+        run: WAIT_TIMEOUT=420 ./scripts/wait-for-app.sh istiod
 
       - name: Platform 7/10 — Wave 6 istio-gateway, istio-policies
-        run: WAIT_TIMEOUT=600 ./scripts/wait-for-apps.sh istio-gateway istio-policies
+        run: WAIT_TIMEOUT=420 ./scripts/wait-for-apps.sh istio-gateway istio-policies
 
       - name: Platform 8/10 — Wave 7 istio-ingress-tls, monitoring, kyverno
-        run: WAIT_TIMEOUT=900 ./scripts/wait-for-apps.sh istio-ingress-tls monitoring kyverno
+        run: WAIT_TIMEOUT=600 ./scripts/wait-for-apps.sh istio-ingress-tls monitoring kyverno
 
       - name: Platform 9/12 — Wave 8 monitoring-alerts, platform-policies
-        run: WAIT_TIMEOUT=300 ./scripts/wait-for-apps.sh monitoring-alerts platform-policies
+        run: WAIT_TIMEOUT=240 ./scripts/wait-for-apps.sh monitoring-alerts platform-policies
 
       - name: Platform 10/12 — Wave 9 couchbase-config
-        run: WAIT_TIMEOUT=300 ./scripts/wait-for-app.sh couchbase-config
+        run: WAIT_TIMEOUT=180 ./scripts/wait-for-app.sh couchbase-config
 
       - name: Platform 11/12 — Wave 10 couchbase
-        run: WAIT_TIMEOUT=1200 ./scripts/wait-for-app.sh couchbase
+        run: WAIT_TIMEOUT=480 ./scripts/wait-for-app.sh couchbase
 
       - name: Platform 12/12 — Wave 11 kubeship
-        run: WAIT_TIMEOUT=900 ./scripts/wait-for-app.sh kubeship
+        run: WAIT_TIMEOUT=240 ./scripts/wait-for-app.sh kubeship
 
       - name: Verify core platform health
         env:
           LOCAL: "true"
         run: |
-          for attempt in $(seq 1 6); do
-            echo "Verify attempt ${attempt}/6"
+          for attempt in $(seq 1 3); do
+            echo "Verify attempt ${attempt}/3"
             if ./scripts/verify-platform.sh; then
               exit 0
             fi
-            if [[ "${attempt}" -lt 6 ]]; then
-              echo "Platform still syncing — retrying in 60s..."
-              sleep 60
+            if [[ "${attempt}" -lt 3 ]]; then
+              echo "Platform still syncing — retrying in 30s..."
+              sleep 30
             fi
           done
           echo "--- Argo CD applications ---"

@@ -36,12 +36,12 @@ func NewCouchbaseStore(ctx context.Context) (*CouchbaseStore, error) {
 		return nil, err
 	}
 
-	if err := cluster.WaitUntilReady(90*time.Second, &gocb.WaitUntilReadyOptions{Context: ctx}); err != nil {
+	if err := cluster.WaitUntilReady(60*time.Second, &gocb.WaitUntilReadyOptions{Context: ctx}); err != nil {
 		return nil, fmt.Errorf("cluster wait: %w", err)
 	}
 
 	bucket := cluster.Bucket(bucketName)
-	if err := bucket.WaitUntilReady(60*time.Second, &gocb.WaitUntilReadyOptions{Context: ctx}); err != nil {
+	if err := bucket.WaitUntilReady(45*time.Second, &gocb.WaitUntilReadyOptions{Context: ctx}); err != nil {
 		return nil, fmt.Errorf("bucket %q wait: %w", bucketName, err)
 	}
 

@@ -70,7 +70,7 @@ spec:
               path: /health
               port: http
             periodSeconds: 5
-            failureThreshold: 24
+            failureThreshold: 18
           readinessProbe:
             httpGet:
               path: /health
