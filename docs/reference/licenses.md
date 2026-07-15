@@ -14,7 +14,7 @@ This repository targets **open-source and no-commercial-license** components. Pa
 | kube-prometheus-stack | Apache 2.0 | OSS | Prometheus, Alertmanager, **Grafana OSS** |
 | MetalLB | Apache 2.0 | OSS | kind LoadBalancer |
 | Couchbase Operator | Apache 2.0 | OSS | Helm chart from couchbase-partners |
-| **Couchbase Server** | [CE license](https://www.couchbase.com/downloads) | **Community Edition** | Pinned: `couchbase/server:community-7.6.0` in GitOps — **not** Enterprise |
+| **Couchbase Server** | [CE license](https://www.couchbase.com/downloads) | **Community Edition** | Pinned: `couchbase/server:community-8.0.1` in GitOps — **not** Enterprise |
 | KubeShip | Internal | — | Application in `apps/kubeship/` |
 
 ### Couchbase Community Edition
@@ -23,7 +23,7 @@ Enterprise Edition requires a commercial license. GitOps pins the data-plane ima
 
 ```yaml
 cluster:
-  image: couchbase/server:community-7.6.0
+  image: couchbase/server:community-8.0.1
 ```
 
 Do not change this to `couchbase/server:8.x` or other enterprise tags without a valid license.

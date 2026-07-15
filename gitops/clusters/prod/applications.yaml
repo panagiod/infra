@@ -473,7 +473,7 @@ spec:
           couchbaseCluster: true
           syncGateway: false
         cluster:
-          image: couchbase/server:community-7.6.0
+          image: couchbase/server:community-8.0.1
           antiAffinity: true
           name: couchbase
           security:

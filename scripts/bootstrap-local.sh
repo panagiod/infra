@@ -331,10 +331,26 @@ if lines:
 " "${FAIL_FAST_STUCK_AFTER}" 2>/dev/null || true
 }
 
+app_couchbase_failures() {
+  local unreconcilable msg
+  unreconcilable="$(kubectl -n couchbase get couchbasecluster couchbase -o jsonpath='{.status.conditions[?(@.type=="Unreconcilable")].status}' 2>/dev/null || true)"
+  if [[ "${unreconcilable}" == "True" ]]; then
+    msg="$(kubectl -n couchbase get couchbasecluster couchbase -o jsonpath='{.status.conditions[?(@.type=="Unreconcilable")].message}' 2>/dev/null || true)"
+    printf 'CouchbaseCluster unreconcilable: %s\n' "${msg:-see operator logs}"
+    return 0
+  fi
+  return 1
+}
+
 app_workload_fail_fast() {
   local app="$1"
   case "${app}" in
-    kubeship) app_kubeship_failures ;;
+    couchbase)
+      app_couchbase_failures
+      ;;
+    kubeship)
+      app_kubeship_failures
+      ;;
   esac
 }
 
