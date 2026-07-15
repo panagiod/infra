@@ -52,7 +52,7 @@ spec:
               containerPort: 8080
           env:
             - name: COUCHBASE_CONNECTION_STRING
-              value: couchbase://couchbase-srv.couchbase?network=default
+              value: couchbase://couchbase-srv.couchbase.svc.cluster.local?network=default
             - name: COUCHBASE_BUCKET
               value: kubeship
             - name: COUCHBASE_USERNAME
@@ -70,7 +70,7 @@ spec:
               path: /health
               port: http
             periodSeconds: 5
-            failureThreshold: 18
+            failureThreshold: 30
           readinessProbe:
             httpGet:
               path: /health

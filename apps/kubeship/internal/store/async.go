@@ -25,7 +25,7 @@ func OpenAsync(parent context.Context) Store {
 }
 
 func (a *asyncStore) connect(parent context.Context) {
-	connectCtx, cancel := context.WithTimeout(parent, 2*time.Minute)
+	connectCtx, cancel := context.WithTimeout(parent, 3*time.Minute)
 	defer cancel()
 	s, err := OpenDefault(connectCtx)
 	a.mu.Lock()

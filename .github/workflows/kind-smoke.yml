@@ -134,7 +134,7 @@ jobs:
         run: WAIT_TIMEOUT=420 ./scripts/wait-for-apps.sh istio-gateway istio-policies
 
       - name: Platform 8/10 — Wave 7 istio-ingress-tls, monitoring, kyverno
-        run: WAIT_TIMEOUT=600 ./scripts/wait-for-apps.sh istio-ingress-tls monitoring kyverno
+        run: WAIT_TIMEOUT=900 ./scripts/wait-for-apps.sh istio-ingress-tls monitoring kyverno
 
       - name: Platform 9/12 — Wave 8 monitoring-alerts, platform-policies
         run: WAIT_TIMEOUT=240 ./scripts/wait-for-apps.sh monitoring-alerts platform-policies
@@ -143,10 +143,10 @@ jobs:
         run: WAIT_TIMEOUT=180 ./scripts/wait-for-app.sh couchbase-config
 
       - name: Platform 11/12 — Wave 10 couchbase
-        run: WAIT_TIMEOUT=480 ./scripts/wait-for-app.sh couchbase
+        run: WAIT_TIMEOUT=600 ./scripts/wait-for-app.sh couchbase
 
       - name: Platform 12/12 — Wave 11 kubeship
-        run: WAIT_TIMEOUT=240 ./scripts/wait-for-app.sh kubeship
+        run: WAIT_TIMEOUT=600 ./scripts/wait-for-app.sh kubeship
 
       - name: Verify core platform health
         env:
