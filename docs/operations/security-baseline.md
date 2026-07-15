@@ -56,8 +56,8 @@ Module: `terraform/modules/eks/main.tf`
 |---------|----------------|
 | Private worker nodes | `private_subnet_ids` for node groups |
 | API endpoint CIDR allowlist | `cluster_endpoint_public_access_cidrs` |
-| Control plane audit logs | `cluster_enabled_log_types` (api, audit, authenticator, controllerManager, scheduler) |
-| Secrets encryption at rest | `enable_cluster_secrets_encryption` + AWS KMS (`create_kms_key`) |
+| Control plane audit logs | `enabled_log_types` (api, audit, authenticator, controllerManager, scheduler) |
+| Secrets encryption at rest | `enable_cluster_secrets_encryption` + AWS KMS (`create_kms_key`, `encryption_config`) |
 | IRSA | LB controller, cluster-autoscaler, EBS CSI |
 
 Production example: `terraform/environments/prod/terraform.tfvars.example` — restrict API CIDRs.
