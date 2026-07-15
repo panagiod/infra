@@ -1,0 +1,42 @@
+# Default-deny network segmentation for KubeShip (CIS 5.3.x starter).
+# Istio handles L7/mTLS; this policy limits pod-level east-west reachability.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: kubeship-api
+  namespace: kubeship
+spec:
+  podSelector:
+    matchLabels:
+      app: kubeship-api
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    # Mesh ingress gateway and in-namespace traffic
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: istio-system
+        - podSelector: {}
+  egress:
+    # Couchbase backing service
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: couchbase
+    # Cluster DNS
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+      ports:
+        - protocol: UDP
+          port: 53
+        - protocol: TCP
+          port: 53
+    # Istio control plane (xDS, CA) for injected sidecars
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: istio-system

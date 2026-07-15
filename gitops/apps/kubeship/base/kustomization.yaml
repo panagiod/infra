@@ -4,6 +4,7 @@ kind: Kustomization
 resources:
   - app.yaml
   - ingress.yaml
+  - network-policy.yaml
 
 commonLabels:
   app.kubernetes.io/name: kubeship

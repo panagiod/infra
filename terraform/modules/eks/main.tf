@@ -96,6 +96,24 @@ variable "cluster_endpoint_public_access_cidrs" {
   default = ["0.0.0.0/0"]
 }
 
+# CIS / EKS best practice — control plane audit logs (api, audit, authenticator, etc.)
+variable "cluster_enabled_log_types" {
+  type = list(string)
+  default = [
+    "api",
+    "audit",
+    "authenticator",
+    "controllerManager",
+    "scheduler",
+  ]
+}
+
+# Encrypt Kubernetes secrets at rest in etcd (AWS KMS)
+variable "enable_cluster_secrets_encryption" {
+  type    = bool
+  default = true
+}
+
 # Optional extra AWS tags merged onto all resources
 variable "tags" {
   type    = map(string)
@@ -150,6 +168,13 @@ module "eks" {
   endpoint_public_access       = var.cluster_endpoint_public_access
   endpoint_public_access_cidrs = var.cluster_endpoint_public_access_cidrs
   endpoint_private_access      = true
+
+  cluster_enabled_log_types = var.cluster_enabled_log_types
+
+  create_kms_key = var.enable_cluster_secrets_encryption
+  cluster_encryption_config = var.enable_cluster_secrets_encryption ? {
+    resources = ["secrets"]
+  } : {}
 
   # Grants the Terraform caller admin access to the cluster RBAC
   enable_cluster_creator_admin_permissions = true

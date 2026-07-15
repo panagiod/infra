@@ -19,7 +19,7 @@ The repository **intentionally** uses an internal bootstrap CA for all environme
 
 Manifests: `gitops/platform/cert-manager/overlays/`
 
-### Bootstrap flow (unchanged)
+### Bootstrap flow
 
 1. `bootstrap-issuer` — `selfSigned` ClusterIssuer creates a one-time root
 2. `platform-ca` — `Certificate` resource creates a CA cert signed by bootstrap
@@ -102,3 +102,7 @@ Alert on:
 - `certmanager_certificate_expiration_timestamp_seconds` < 7 days
 - istio-csr approval failures
 - `istiod` CSR errors
+
+## Related
+
+- [security-baseline.md](security-baseline.md)

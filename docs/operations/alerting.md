@@ -1,27 +1,14 @@
-# Alerting setup
+# Alerting
 
-Prometheus rules and Alertmanager routing for the platform monitoring stack.
+Platform monitoring uses Prometheus rules and Alertmanager from `kube-prometheus-stack`.
 
-Prerequisites: `monitoring` and `monitoring-alerts` Applications synced (see [verify.md](verify.md)).
+## Lab default: null receiver
 
-## Prometheus rules
+Staging and kind clusters ship with a **null receiver** — alerts are evaluated and visible in the Alertmanager UI, but **nothing is delivered** externally.
 
-`gitops/platform/monitoring/alerts/cert-manager.yaml` defines certificate expiry alerts:
-
-| Alert | Severity | Condition |
-|-------|----------|-----------|
-| `CertificateExpiringSoon` | warning | Expires within 7 days |
-| `CertificateExpiringCritical` | critical | Expires within 24 hours |
-
-Deployed by the `monitoring-alerts` Argo CD Application.
-
-## Lab default: notifications disabled
-
-**Phase 1 ships with Alertmanager routing to the `null` receiver** in both staging and prod GitOps overlays (`gitops/clusters/*/applications.yaml`).
-
-| Behaviour | Lab (`null` receiver) |
-|-----------|------------------------|
-| Rules evaluate in Prometheus | Yes |
+| Capability | Lab default |
+|------------|-------------|
+| Prometheus rules fire | Yes |
 | Alerts visible in Alertmanager UI | Yes |
 | Slack / email / PagerDuty delivery | **No** |
 | Invalid webhook URLs in config | **No** (placeholders removed) |
@@ -106,4 +93,5 @@ Prefer Sealed Secrets or External Secrets Operator for GitOps-managed secret del
 ## Related
 
 - [cert-manager-provider.md](cert-manager-provider.md) — PKI and certificate expiry context
+- [security-baseline.md](security-baseline.md) — production security checklist
 - [reference/project-status.md](../reference/project-status.md) — lab vs production-proven scope

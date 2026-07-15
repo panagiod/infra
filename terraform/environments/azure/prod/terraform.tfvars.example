@@ -16,3 +16,8 @@ gitops_target_revision = "main"
 
 # Tighten before production — never use 0.0.0.0/0
 api_server_authorized_ip_ranges = ["203.0.113.0/24"]
+
+# CIS / production hardening (see docs/operations/security-baseline.md)
+aks_sku_tier             = "Standard"
+azure_policy_enabled     = true
+enable_log_analytics     = false  # set true for Azure Monitor / audit logs (adds cost)

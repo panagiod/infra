@@ -104,9 +104,11 @@ Restrict Kubernetes API access in prod via `cluster_endpoint_public_access_cidrs
 ## Security baseline
 
 - Istio `PeerAuthentication` STRICT in `istio-system`
-- Kyverno: require Istio injection on workload namespaces (e.g. kubeship)
-- Separate Terraform state and platform CA per environment
-- Lab defaults (open API CIDRs, bootstrap CA) — tighten before production
+- Kyverno CIS starter policies (privileged, host namespaces, hostPath enforced on workloads)
+- Pod Security Admission on `kubeship` (baseline enforce, restricted audit)
+- KubeShip NetworkPolicy for default-deny segmentation
+- EKS: audit logs + KMS secrets encryption; AKS: Azure Policy add-on
+- See [security-baseline.md](../operations/security-baseline.md) for CIS mapping
 
 ## State and blast radius
 

@@ -1,0 +1,42 @@
+# CIS 5.2.x — require RuntimeDefault seccomp profile.
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: cis-require-seccomp-runtime-default
+  annotations:
+    policies.kyverno.io/title: Require seccompProfile RuntimeDefault
+    policies.kyverno.io/category: CIS
+    policies.kyverno.io/severity: low
+spec:
+  validationFailureAction: Audit
+  background: true
+  rules:
+    - name: seccomp-runtime-default
+      match:
+        any:
+          - resources:
+              kinds:
+                - Pod
+      exclude:
+        any:
+          - resources:
+              namespaces:
+                - kube-system
+                - cert-manager
+                - istio-system
+                - monitoring
+                - kyverno
+                - argocd
+                - couchbase
+      validate:
+        message: "Containers must set seccompProfile.type=RuntimeDefault (pod or container level)."
+        anyPattern:
+          - spec:
+              securityContext:
+                seccompProfile:
+                  type: RuntimeDefault
+          - spec:
+              containers:
+                - securityContext:
+                    seccompProfile:
+                      type: RuntimeDefault

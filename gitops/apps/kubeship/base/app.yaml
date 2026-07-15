@@ -5,6 +5,9 @@ metadata:
   name: kubeship
   labels:
     istio-injection: enabled
+    pod-security.kubernetes.io/enforce: baseline
+    pod-security.kubernetes.io/audit: restricted
+    pod-security.kubernetes.io/warn: restricted
 ---
 apiVersion: v1
 kind: Secret
@@ -33,6 +36,9 @@ spec:
       labels:
         app: kubeship-api
     spec:
+      securityContext:
+        seccompProfile:
+          type: RuntimeDefault
       containers:
         - name: kubeship-api
           image: kubeship:ci

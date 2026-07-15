@@ -75,6 +75,6 @@ or `Relates to #18` when the PR does not fully complete the issue.
 |-------|------|---------|
 | Cloud staging soak | cloud-soak | Bootstrap real staging, verify, destroy |
 | First KubeShip production release | app | Semver tag via `release.yml` |
-| Security hardening | security | Helm pins, alerting, PKI, API CIDRs |
+| Security hardening | security | Helm pins, API CIDRs, secret rotation |
 
 Closed as superseded: separate app repo (#15), Argo registration (#16), generic backing services (#17) — all covered by KubeShip Phase 1 (PR #21).

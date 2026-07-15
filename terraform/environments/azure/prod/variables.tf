@@ -64,3 +64,21 @@ variable "api_server_authorized_ip_ranges" {
   type        = list(string)
   default     = ["0.0.0.0/0"]
 }
+
+variable "aks_sku_tier" {
+  description = "AKS control plane SKU — Free for lab, Standard for production SLA."
+  type        = string
+  default     = "Standard"
+}
+
+variable "azure_policy_enabled" {
+  description = "Enable Azure Policy add-on for CIS-oriented Kubernetes governance."
+  type        = bool
+  default     = true
+}
+
+variable "enable_log_analytics" {
+  description = "Provision Log Analytics workspace and Container Insights oms_agent."
+  type        = bool
+  default     = false
+}
