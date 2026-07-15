@@ -57,11 +57,25 @@ func (c *CouchbaseStore) collection() *gocb.Collection {
 }
 
 func (c *CouchbaseStore) Ready(ctx context.Context) error {
-	if c.bucket == nil {
+	if c.bucket == nil || c.cluster == nil {
 		return ErrNotReady
 	}
-	_, err := c.collection().Exists("carrier::local-courier", &gocb.ExistsOptions{Context: ctx})
-	return err
+	// Probes use short timeouts; do not tie KV checks to the HTTP request context.
+	checkCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), 3*time.Second)
+	defer cancel()
+	result, err := c.cluster.Ping(&gocb.PingOptions{
+		Context:      checkCtx,
+		ServiceTypes: []gocb.ServiceType{gocb.ServiceTypeKeyValue},
+	})
+	if err != nil {
+		return err
+	}
+	for _, report := range result.Services[gocb.ServiceTypeKeyValue] {
+		if report.State == gocb.PingStateOk {
+			return nil
+		}
+	}
+	return ErrNotReady
 }
 
 func (c *CouchbaseStore) ListCarriers(ctx context.Context) ([]models.Carrier, error) {

@@ -28,6 +28,7 @@ spec:
                 - kyverno
                 - argocd
                 - couchbase
+                - kubeship
       validate:
         message: "Containers must set securityContext.runAsNonRoot=true."
         pattern:
