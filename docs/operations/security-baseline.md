@@ -40,7 +40,7 @@ Audit policies surface gaps via Kyverno Policy Reports without blocking Istio si
 
 `kubeship` namespace labels:
 
-- `pod-security.kubernetes.io/enforce: baseline`
+- `pod-security.kubernetes.io/enforce: privileged` (Istio sidecar init requires `NET_ADMIN`/`NET_RAW`; audit/warn still target restricted)
 - `pod-security.kubernetes.io/audit: restricted`
 - `pod-security.kubernetes.io/warn: restricted`
 
