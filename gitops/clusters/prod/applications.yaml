@@ -463,6 +463,7 @@ spec:
   source:
     repoURL: https://couchbase-partners.github.io/helm-charts
     chart: couchbase-operator
+    # Pin: operator 2.9+ rejects CE — see docs/reference/licenses.md
     targetRevision: "2.64.1"
     helm:
       releaseName: couchbase

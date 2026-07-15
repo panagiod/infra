@@ -43,8 +43,11 @@ for d in apps:
         errors.append(f'{name}: must not use sync-wave on Application CR (use Kind smoke wait order)')
     src = d.get('spec', {}).get('source', {})
     tr = src.get('targetRevision')
+  # couchbase-operator 2.9+ rejects Community Edition; 2.64.1 is the last CE-compatible chart.
+    allowed_pins = {('couchbase', 'couchbase-operator', '2.64.1')}
     if src.get('chart') and tr and tr not in ('*', 'x'):
-        errors.append(f'{name}: Helm chart {src["chart"]} must use targetRevision * or x for latest stable, not pin {tr!r} (.cursor/rules/dependencies.mdc)')
+        if (name, src['chart'], tr) not in allowed_pins:
+            errors.append(f'{name}: Helm chart {src["chart"]} must use targetRevision * or x for latest stable, not pin {tr!r} (.cursor/rules/dependencies.mdc)')
     if src.get('chart') and not tr:
         errors.append(f'{name}: Helm chart {src["chart"]} must set targetRevision: \'*\' (Argo CD requires explicit latest wildcard)')
     if d.get('spec', {}).get('dependsOn'):

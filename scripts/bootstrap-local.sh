@@ -330,11 +330,22 @@ if lines:
 }
 
 app_couchbase_failures() {
-  local unreconcilable msg
+  local unreconcilable error_status msg
   unreconcilable="$(kubectl -n couchbase get couchbasecluster couchbase -o jsonpath='{.status.conditions[?(@.type=="Unreconcilable")].status}' 2>/dev/null || true)"
   if [[ "${unreconcilable}" == "True" ]]; then
     msg="$(kubectl -n couchbase get couchbasecluster couchbase -o jsonpath='{.status.conditions[?(@.type=="Unreconcilable")].message}' 2>/dev/null || true)"
     printf 'CouchbaseCluster unreconcilable: %s\n' "${msg:-see operator logs}"
+    return 0
+  fi
+  error_status="$(kubectl -n couchbase get couchbasecluster couchbase -o jsonpath='{.status.conditions[?(@.type=="Error")].status}' 2>/dev/null || true)"
+  if [[ "${error_status}" == "True" ]]; then
+    msg="$(kubectl -n couchbase get couchbasecluster couchbase -o jsonpath='{.status.conditions[?(@.type=="Error")].message}' 2>/dev/null || true)"
+    printf 'CouchbaseCluster error: %s\n' "${msg:-see operator logs}"
+    return 0
+  fi
+  if kubectl -n couchbase get events --field-selector involvedObject.name=couchbase,involvedObject.kind=CouchbaseCluster 2>/dev/null \
+    | grep -q 'community edition'; then
+    printf 'CouchbaseCluster: operator rejected Community Edition (pin chart 2.64.1 for CE)\n'
     return 0
   fi
   return 1
