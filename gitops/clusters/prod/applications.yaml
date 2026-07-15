@@ -469,7 +469,7 @@ spec:
       values: |
         install:
           couchbaseOperator: true
-          admissionController: true
+          admissionController: false
           couchbaseCluster: true
           syncGateway: false
         cluster:
