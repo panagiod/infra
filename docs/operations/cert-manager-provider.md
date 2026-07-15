@@ -1,15 +1,53 @@
 # cert-manager provider (custom CA)
 
-Phase 1 ships a **bootstrap PKI** using cert-manager's built-in issuers so Istio mTLS works out of the box. Replace this with your own cert-manager issuer implementation without changing the mesh architecture.
+Phase 1 ships a **bootstrap PKI** using cert-manager's built-in issuers so Istio mTLS works out of the box. This document states what is acceptable in lab environments and what must change before production.
 
-## Current bootstrap flow
+## Lab stance (phase 1 default)
+
+The repository **intentionally** uses an internal bootstrap CA for all environments in GitOps today:
+
+| Property | Lab value | Acceptable for |
+|----------|-----------|----------------|
+| Root of trust | `bootstrap-issuer` (`selfSigned`) → `platform-ca` | kind, Codespaces, dev/staging clusters |
+| CA private key | Kubernetes Secret `platform-ca-secret` in `cert-manager` | Non-compliance, learning, short-lived clusters |
+| CA lifetime | ~10 years (`87600h`) | Convenience; not a security control |
+| Mesh certs | Short-lived via istio-csr + `platform-ca-issuer` | All phase-1 environments |
+| Ingress certs | `platform-ca-issuer` (not public CA) | Lab hostnames (`*.gateway.example.com`) |
+| Staging vs prod | Separate overlays, separate clusters | **Never share CA secrets between clusters** |
+
+**Explicit decision:** bootstrap PKI is **dev/lab only**. It is not audited, not HSM-backed, and not suitable for compliance or customer-facing production TLS where public trust is required.
+
+Manifests: `gitops/platform/cert-manager/overlays/`
+
+### Bootstrap flow (unchanged)
 
 1. `bootstrap-issuer` — `selfSigned` ClusterIssuer creates a one-time root
 2. `platform-ca` — `Certificate` resource creates a CA cert signed by bootstrap
 3. `platform-ca-issuer` — `CA` ClusterIssuer uses the platform CA secret
 4. `istio-csr` — requests mesh certificates from `platform-ca-issuer`
 
-Manifests: `gitops/platform/cert-manager/overlays/`
+## Production stance (required before go-live)
+
+Before calling a cluster production-ready, make an explicit PKI decision and implement it. The mesh layout (istio-csr, ClusterIssuer names, ingress `Certificate` CRs) can stay; **only the issuer implementation changes**.
+
+| Requirement | Lab (current) | Production target |
+|-------------|---------------|-------------------|
+| Root CA custody | Secret in etcd | Offline ceremony or cloud CA (AWS PCA, Vault, etc.) |
+| Intermediate per env | `platform-ca` in cluster | Dedicated intermediate per staging/prod cluster |
+| Key storage | Kubernetes Secret | KMS / HSM / Vault |
+| Ingress TLS | Platform CA (private trust) | Public CA or org PKI trusted by clients |
+| Audit | None | Issuance logging and access control |
+| Rotation | cert-manager renewal | Documented runbooks for CA and mesh cert rotation |
+
+### Production checklist
+
+- [ ] Choose issuer option (see below)
+- [ ] Provision staging intermediate — validate mesh + ingress with new issuer
+- [ ] Provision prod intermediate — separate keys and trust chain
+- [ ] Update `platform-ca-issuer` or replace with named ClusterIssuer per overlay
+- [ ] Update istio-csr `issuerRef` if ClusterIssuer name changes
+- [ ] Confirm alert rules fire for cert expiry (see [alerting.md](alerting.md))
+- [ ] Document rotation runbook for platform CA and ingress certs
 
 ## Target: your custom provider
 
@@ -64,5 +102,3 @@ Alert on:
 - `certmanager_certificate_expiration_timestamp_seconds` < 7 days
 - istio-csr approval failures
 - `istiod` CSR errors
-
-See `gitops/platform/monitoring/alerts/cert-manager.yaml`.

@@ -299,6 +299,8 @@ spec:
 # -----------------------------------------------------------------------------
 # Full observability stack for metrics and dashboards. Staging keeps 15 days of
 # Prometheus data; change adminPassword before any real use.
+# Alertmanager uses the null receiver (lab default) — alerts are visible in the
+# UI only; see docs/operations/alerting.md to wire Slack or PagerDuty.
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
@@ -330,30 +332,10 @@ spec:
             global:
               resolve_timeout: 5m
             route:
-              receiver: default
+              receiver: 'null'
               group_by: ['alertname', 'namespace']
-              routes:
-                - matchers:
-                    - severity = critical
-                  receiver: critical
-                - matchers:
-                    - severity = warning
-                  receiver: warning
             receivers:
-              - name: default
-              - name: critical
-                slack_configs:
-                  - channel: '#platform-critical'
-                    send_resolved: true
-                    title: '{{ .CommonAnnotations.summary }}'
-                    text: '{{ .CommonLabels.alertname }}: {{ .CommonAnnotations.description }}'
-                    api_url: 'REPLACE_WITH_SLACK_WEBHOOK'
-              - name: warning
-                slack_configs:
-                  - channel: '#platform-warning'
-                    send_resolved: true
-                    title: '{{ .CommonAnnotations.summary }}'
-                    api_url: 'REPLACE_WITH_SLACK_WEBHOOK'
+              - name: 'null'
   destination:
     server: https://kubernetes.default.svc
     namespace: monitoring

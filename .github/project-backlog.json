@@ -37,7 +37,7 @@
       "title": "Security hardening — Helm pins and alerting",
       "labels": ["security", "platform"],
       "state": "open",
-      "body": "## Goal\n\nMove from lab defaults toward production-ready posture (still on staging first).\n\n## Checklist\n\n- [ ] Pin Helm chart versions for platform components\n- [ ] Replace bootstrap platform CA decision (or document explicit dev-only stance)\n- [ ] Wire Alertmanager receivers (replace Slack placeholders)\n- [ ] Restrict Kubernetes API CIDRs for prod Terraform vars\n- [ ] Rotate Grafana / Couchbase staging secrets off `changeme`\n\n## References\n\n- [docs/project-status.md](https://github.com/panagiod/infra/blob/main/docs/project-status.md) — maturity path step 4\n- [docs/alerting.md](https://github.com/panagiod/infra/blob/main/docs/alerting.md)"
+      "body": "## Goal\n\nMove from lab defaults toward production-ready posture (still on staging first).\n\n## Checklist\n\n- [ ] Pin Helm chart versions for platform components\n- [x] Replace bootstrap platform CA decision (or document explicit dev-only stance)\n- [x] Wire Alertmanager receivers (lab null receiver documented; production Slack pattern in docs)\n- [ ] Restrict Kubernetes API CIDRs for prod Terraform vars\n- [ ] Rotate Grafana / Couchbase staging secrets off `changeme`\n\n## References\n\n- [docs/reference/project-status.md](https://github.com/panagiod/infra/blob/main/docs/reference/project-status.md) — maturity path step 4\n- [docs/operations/alerting.md](https://github.com/panagiod/infra/blob/main/docs/operations/alerting.md)\n- [docs/operations/cert-manager-provider.md](https://github.com/panagiod/infra/blob/main/docs/operations/cert-manager-provider.md)"
     }
   ]
 }

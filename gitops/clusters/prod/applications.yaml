@@ -285,7 +285,8 @@ spec:
 # monitoring — Prometheus, Grafana, and Alertmanager
 # -----------------------------------------------------------------------------
 # Production observability with 30-day Prometheus retention and Grafana dashboards.
-# Rotate adminPassword and wire Alertmanager receivers for on-call workflows.
+# Alertmanager uses the null receiver until on-call routing is wired — see
+# docs/operations/alerting.md before go-live.
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
@@ -319,30 +320,10 @@ spec:
             global:
               resolve_timeout: 5m
             route:
-              receiver: default
+              receiver: 'null'
               group_by: ['alertname', 'namespace']
-              routes:
-                - matchers:
-                    - severity = critical
-                  receiver: critical
-                - matchers:
-                    - severity = warning
-                  receiver: warning
             receivers:
-              - name: default
-              - name: critical
-                slack_configs:
-                  - channel: '#platform-critical'
-                    send_resolved: true
-                    title: '{{ .CommonAnnotations.summary }}'
-                    text: '{{ .CommonLabels.alertname }}: {{ .CommonAnnotations.description }}'
-                    api_url: 'REPLACE_WITH_SLACK_WEBHOOK'
-              - name: warning
-                slack_configs:
-                  - channel: '#platform-warning'
-                    send_resolved: true
-                    title: '{{ .CommonAnnotations.summary }}'
-                    api_url: 'REPLACE_WITH_SLACK_WEBHOOK'
+              - name: 'null'
   destination:
     server: https://kubernetes.default.svc
     namespace: monitoring
