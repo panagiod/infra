@@ -57,16 +57,7 @@ func (c *CouchbaseStore) collection() *gocb.Collection {
 }
 
 func (c *CouchbaseStore) Ready(ctx context.Context) error {
-	if c.bucket == nil || c.cluster == nil {
-		return ErrNotReady
-	}
-	checkCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), 3*time.Second)
-	defer cancel()
-	exists, err := c.collection().Exists("carrier::local-courier", &gocb.ExistsOptions{Context: checkCtx})
-	if err != nil {
-		return err
-	}
-	if !exists.Exists() {
+	if c.bucket == nil {
 		return ErrNotReady
 	}
 	return nil

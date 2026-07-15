@@ -17,13 +17,10 @@ import (
 func main() {
 	port := getenv("PORT", "8080")
 
-	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
+	rootCtx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
 
-	st, err := store.OpenDefault(ctx)
-	if err != nil {
-		log.Fatalf("store: %v", err)
-	}
+	st := store.OpenAsync(context.Background())
 
 	srv := &http.Server{
 		Addr:              ":" + port,
@@ -38,7 +35,7 @@ func main() {
 		}
 	}()
 
-	<-ctx.Done()
+	<-rootCtx.Done()
 	shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 	_ = srv.Shutdown(shutdownCtx)

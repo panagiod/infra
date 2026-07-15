@@ -65,6 +65,12 @@ spec:
                 secretKeyRef:
                   name: kubeship-couchbase
                   key: password
+          startupProbe:
+            httpGet:
+              path: /health
+              port: http
+            periodSeconds: 5
+            failureThreshold: 60
           readinessProbe:
             httpGet:
               path: /health
