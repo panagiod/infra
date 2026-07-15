@@ -10,7 +10,7 @@ Prerequisites: cluster bootstrapped and `platform-policies` Application synced.
 |-------|------------------------------|------------------------|
 | Pod security (Kyverno) | Enforce: no privileged, no host namespaces/path | Same + tighten Audit→Enforce on caps/seccomp |
 | Pod Security Admission | `kubeship`: baseline enforce, restricted audit | Workload namespaces: restricted |
-| Network | KubeShip NetworkPolicy (default-deny + explicit allows) | Extend per application namespace |
+| Network | KubeShip NetworkPolicy (ingress restrict; egress open for Couchbase SDK) | Extend per application namespace |
 | Mesh | Istio STRICT mTLS | Same |
 | EKS control plane | N/A on kind | Audit logs + KMS secrets encryption (Terraform) |
 | AKS control plane | N/A on kind | Azure Policy add-on; optional Log Analytics |
