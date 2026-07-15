@@ -9,6 +9,7 @@ on:
       - 'hack/kind/**'
       - 'hack/argocd/**'
       - 'scripts/ci-check-images.sh'
+      - 'scripts/ci-preload-kind-images.sh'
       - 'scripts/ci-kubeconform.sh'
       - 'scripts/ci-preflight-gitops.sh'
       - 'scripts/ci_render_gitops.py'
@@ -60,7 +61,9 @@ jobs:
       - uses: azure/setup-helm@v4
 
       - name: Verify container images are pullable (preflight)
-        run: chmod +x scripts/ci-check-images.sh && ./scripts/ci-check-images.sh
+        run: |
+          chmod +x scripts/ci-check-images.sh
+          LIST_OUT="${RUNNER_TEMP}/kind-images.txt" ./scripts/ci-check-images.sh
 
       - name: Install kind
         run: |
@@ -80,6 +83,11 @@ jobs:
             kubectl config use-context "kind-${CLUSTER_NAME}"
           fi
           kubectl cluster-info
+
+      - name: Preload platform images into kind
+        run: |
+          chmod +x scripts/ci-preload-kind-images.sh
+          PRELOAD_FROM_LIST="${RUNNER_TEMP}/kind-images.txt" CLUSTER_NAME="${CLUSTER_NAME}" ./scripts/ci-preload-kind-images.sh
 
       - name: Prepare bootstrap scripts
         run: chmod +x scripts/bootstrap-local.sh scripts/ci-pod-diagnostics.sh scripts/wait-for-app.sh scripts/wait-for-apps.sh scripts/verify-platform.sh scripts/verify-kubeship.sh

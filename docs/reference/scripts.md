@@ -24,7 +24,8 @@ Authoritative catalog of repository scripts. Path-specific guides link here inst
 | `scripts/ci-preflight-gitops.sh` | Fast GitOps preflight (render, namespaces, images, kubeconform) |
 | `scripts/validate-gitops-logic.sh` | Install order, no sync-waves, Helm pin rules |
 | `scripts/validate-wave-namespaces.sh` | Namespace references vs bootstrap order |
-| `scripts/ci-check-images.sh` | Verify container images exist in registry |
+| `scripts/ci-check-images.sh` | Verify container images exist in registry; optional `LIST_OUT` for preload |
+| `scripts/ci-preload-kind-images.sh` | Pre-pull images and `kind load` before bootstrap (Kind smoke) |
 | `scripts/ci-kubeconform.sh` | kubeconform on rendered manifests |
 | `scripts/ci-pod-diagnostics.sh` | Pod diagnostics on Kind smoke wait timeout |
 | `scripts/ci_render_gitops.py` | Render GitOps manifests for CI validation |
