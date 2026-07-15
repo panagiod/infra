@@ -18,7 +18,7 @@ type CouchbaseStore struct {
 }
 
 func NewCouchbaseStore(ctx context.Context) (*CouchbaseStore, error) {
-	conn := getenv("COUCHBASE_CONNECTION_STRING", "couchbase://couchbase.couchbase.svc")
+	conn := getenv("COUCHBASE_CONNECTION_STRING", "couchbase://couchbase-srv.couchbase?network=default")
 	bucketName := getenv("COUCHBASE_BUCKET", "kubeship")
 	username := getenv("COUCHBASE_USERNAME", "Administrator")
 	password := os.Getenv("COUCHBASE_PASSWORD")
@@ -36,13 +36,13 @@ func NewCouchbaseStore(ctx context.Context) (*CouchbaseStore, error) {
 		return nil, err
 	}
 
-	if err := cluster.WaitUntilReady(5*time.Minute, &gocb.WaitUntilReadyOptions{Context: ctx}); err != nil {
-		return nil, err
+	if err := cluster.WaitUntilReady(90*time.Second, &gocb.WaitUntilReadyOptions{Context: ctx}); err != nil {
+		return nil, fmt.Errorf("cluster wait: %w", err)
 	}
 
 	bucket := cluster.Bucket(bucketName)
-	if err := bucket.WaitUntilReady(5*time.Minute, &gocb.WaitUntilReadyOptions{Context: ctx}); err != nil {
-		return nil, err
+	if err := bucket.WaitUntilReady(60*time.Second, &gocb.WaitUntilReadyOptions{Context: ctx}); err != nil {
+		return nil, fmt.Errorf("bucket %q wait: %w", bucketName, err)
 	}
 
 	store := &CouchbaseStore{cluster: cluster, bucket: bucket}

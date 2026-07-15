@@ -46,7 +46,7 @@ Audit policies surface gaps via Kyverno Policy Reports without blocking Istio si
 
 ### Network policies
 
-`gitops/apps/kubeship/base/network-policy.yaml` — default-deny with explicit ingress from `istio-system` and egress to `couchbase`, DNS, and Istio control plane.
+`gitops/apps/kubeship/base/network-policy.yaml` — ingress restricted to `istio-system` and in-namespace; egress open (Couchbase SDK uses dynamic pod ports).
 
 ### Application sanity
 

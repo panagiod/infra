@@ -9,8 +9,9 @@ import (
 	"github.com/panagiod/infra/apps/kubeship/internal/models"
 )
 
-// asyncStore connects to Couchbase in the background so the HTTP server can
-// start immediately and /health can return 503 while the database warms up.
+// asyncStore dials Couchbase in the background so the HTTP server listens
+// immediately and /health returns 503 until the bucket is ready (normal K8s
+// startup semantics). Connect should complete in seconds once Couchbase is up.
 type asyncStore struct {
 	mu    sync.RWMutex
 	inner Store
@@ -24,7 +25,7 @@ func OpenAsync(parent context.Context) Store {
 }
 
 func (a *asyncStore) connect(parent context.Context) {
-	connectCtx, cancel := context.WithTimeout(parent, 5*time.Minute)
+	connectCtx, cancel := context.WithTimeout(parent, 3*time.Minute)
 	defer cancel()
 	s, err := OpenDefault(connectCtx)
 	a.mu.Lock()
@@ -32,7 +33,7 @@ func (a *asyncStore) connect(parent context.Context) {
 	a.err = err
 	a.mu.Unlock()
 	if err != nil {
-		log.Printf("store connect: %v", err)
+		log.Printf("store connect failed: %v", err)
 		return
 	}
 	log.Printf("store connected")
