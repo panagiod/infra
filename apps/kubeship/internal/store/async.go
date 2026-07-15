@@ -25,18 +25,38 @@ func OpenAsync(parent context.Context) Store {
 }
 
 func (a *asyncStore) connect(parent context.Context) {
-	connectCtx, cancel := context.WithTimeout(parent, 3*time.Minute)
+	connectCtx, cancel := context.WithTimeout(parent, 5*time.Minute)
 	defer cancel()
-	s, err := OpenDefault(connectCtx)
-	a.mu.Lock()
-	a.inner = s
-	a.err = err
-	a.mu.Unlock()
-	if err != nil {
-		log.Printf("store connect failed: %v", err)
-		return
+
+	var lastErr error
+	for attempt := 1; attempt <= 5; attempt++ {
+		attemptCtx, attemptCancel := context.WithTimeout(connectCtx, 2*time.Minute)
+		s, err := OpenDefault(attemptCtx)
+		attemptCancel()
+		if err == nil {
+			a.mu.Lock()
+			a.inner = s
+			a.err = nil
+			a.mu.Unlock()
+			log.Printf("store connected")
+			return
+		}
+		lastErr = err
+		log.Printf("store connect attempt %d/5 failed: %v", attempt, err)
+		select {
+		case <-connectCtx.Done():
+			attempt = 5
+		case <-time.After(15 * time.Second):
+		}
 	}
-	log.Printf("store connected")
+
+	a.mu.Lock()
+	a.inner = nil
+	a.err = lastErr
+	a.mu.Unlock()
+	if lastErr != nil {
+		log.Printf("store connect failed: %v", lastErr)
+	}
 }
 
 func (a *asyncStore) Ready(ctx context.Context) error {

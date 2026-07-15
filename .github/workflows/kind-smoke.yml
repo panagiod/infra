@@ -50,7 +50,7 @@ jobs:
       RECREATE_CLUSTER: "true"
       STRICT_WAIT: "true"
       FAIL_FAST: "true"
-      FAIL_FAST_STUCK_AFTER: "150"
+      FAIL_FAST_STUCK_AFTER: "240"
       WAIT_POLL_INTERVAL: "3"
       CI_POD_DIAGNOSTICS: "true"
     steps:

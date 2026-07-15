@@ -184,9 +184,34 @@ app_workload_ready() {
       available="$(kubectl -n kubeship get deploy kubeship-api -o jsonpath='{.status.availableReplicas}' 2>/dev/null || echo 0)"
       [[ "${available:-0}" -ge 1 ]]
       ;;
+    couchbase)
+      couchbase_sdk_ready
+      ;;
     *)
       return 1
       ;;
+  esac
+}
+
+couchbase_sdk_ready() {
+  local cluster_ready bucket_ready bucket_names
+  cluster_ready="$(kubectl -n couchbase get couchbasecluster couchbase -o jsonpath='{.status.conditions[?(@.type=="Ready")].status}' 2>/dev/null || true)"
+  [[ "${cluster_ready}" == "True" ]] || return 1
+
+  bucket_ready="$(kubectl -n couchbase get couchbasebucket kubeship -o jsonpath='{.status.conditions[?(@.type=="Ready")].status}' 2>/dev/null || true)"
+  if [[ "${bucket_ready}" == "True" ]]; then
+    return 0
+  fi
+
+  bucket_names="$(kubectl -n couchbase get couchbasecluster couchbase -o jsonpath='{.status.buckets[*].name}' 2>/dev/null || true)"
+  [[ " ${bucket_names} " == *" kubeship "* ]]
+}
+
+app_require_extra_ready() {
+  local app="$1"
+  case "${app}" in
+    couchbase) couchbase_sdk_ready ;;
+    *) return 0 ;;
   esac
 }
 
@@ -210,10 +235,12 @@ app_is_ready() {
     return 1
   fi
   if [[ "${sync}" == "Synced" ]]; then
+    app_require_extra_ready "${app}" || return 1
     return 0
   fi
   # Istio and other Helm charts may stay OutOfSync while Healthy (benign live diff).
   if [[ "${sync}" == "OutOfSync" && "${phase}" == "Succeeded" ]]; then
+    app_require_extra_ready "${app}" || return 1
     return 0
   fi
   return 1
