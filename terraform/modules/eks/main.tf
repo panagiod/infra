@@ -169,10 +169,10 @@ module "eks" {
   endpoint_public_access_cidrs = var.cluster_endpoint_public_access_cidrs
   endpoint_private_access      = true
 
-  cluster_enabled_log_types = var.cluster_enabled_log_types
+  enabled_log_types = var.cluster_enabled_log_types
 
   create_kms_key = var.enable_cluster_secrets_encryption
-  cluster_encryption_config = var.enable_cluster_secrets_encryption ? {
+  encryption_config = var.enable_cluster_secrets_encryption ? {
     resources = ["secrets"]
   } : {}
 

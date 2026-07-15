@@ -77,9 +77,9 @@ module "aks" {
 
   api_server_authorized_ip_ranges = var.api_server_authorized_ip_ranges
 
-  sku_tier              = var.aks_sku_tier
-  azure_policy_enabled  = var.azure_policy_enabled
-  enable_log_analytics  = var.enable_log_analytics
+  sku_tier             = var.aks_sku_tier
+  azure_policy_enabled = var.azure_policy_enabled
+  enable_log_analytics = var.enable_log_analytics
 }
 
 output "cluster_name" {
