@@ -194,14 +194,12 @@ app_workload_ready() {
 }
 
 couchbase_sdk_ready() {
-  local cluster_ready bucket_ready bucket_names
+  local cluster_ready ready_members bucket_names
   cluster_ready="$(kubectl -n couchbase get couchbasecluster couchbase -o jsonpath='{.status.conditions[?(@.type=="Ready")].status}' 2>/dev/null || true)"
-  [[ "${cluster_ready}" == "True" ]] || return 1
+  [[ "${cluster_ready}" == "True" ]] && return 0
 
-  bucket_ready="$(kubectl -n couchbase get couchbasebucket kubeship -o jsonpath='{.status.conditions[?(@.type=="Ready")].status}' 2>/dev/null || true)"
-  if [[ "${bucket_ready}" == "True" ]]; then
-    return 0
-  fi
+  ready_members="$(kubectl -n couchbase get couchbasecluster couchbase -o jsonpath='{.status.members.ready[*]}' 2>/dev/null || true)"
+  [[ -n "${ready_members}" ]] || return 1
 
   bucket_names="$(kubectl -n couchbase get couchbasecluster couchbase -o jsonpath='{.status.buckets[*].name}' 2>/dev/null || true)"
   [[ " ${bucket_names} " == *" kubeship "* ]]

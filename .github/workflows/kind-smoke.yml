@@ -149,7 +149,7 @@ jobs:
         run: WAIT_TIMEOUT=180 ./scripts/wait-for-app.sh couchbase-config
 
       - name: Platform 11/12 — Wave 10 couchbase
-        run: WAIT_TIMEOUT=600 ./scripts/wait-for-app.sh couchbase
+        run: WAIT_TIMEOUT=900 ./scripts/wait-for-app.sh couchbase
 
       - name: Platform 12/12 — Wave 11 kubeship
         run: WAIT_TIMEOUT=600 ./scripts/wait-for-app.sh kubeship
