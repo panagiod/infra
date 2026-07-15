@@ -115,6 +115,12 @@ jobs:
       - name: Platform 1/12 — Install Argo CD
         run: BOOTSTRAP_PHASE=argocd ./scripts/bootstrap-local.sh
 
+      - name: Wait for cluster DNS and Argo CD API
+        run: |
+          kubectl -n kube-system rollout status deploy/coredns --timeout=180s
+          kubectl -n argocd rollout status deploy/argocd-repo-server --timeout=300s
+          kubectl -n argocd rollout status deploy/argocd-server --timeout=180s
+
       - name: Platform 2/10 — Wave 1 cert-manager
         run: WAIT_TIMEOUT=420 ./scripts/wait-for-app.sh cert-manager
 
@@ -122,7 +128,7 @@ jobs:
         run: WAIT_TIMEOUT=420 ./scripts/wait-for-app.sh platform-ca
 
       - name: Platform 4/10 — Wave 3 istio-base
-        run: WAIT_TIMEOUT=240 ./scripts/wait-for-app.sh istio-base
+        run: WAIT_TIMEOUT=300 ./scripts/wait-for-app.sh istio-base
 
       - name: Platform 5/10 — Wave 4 istio-csr
         run: WAIT_TIMEOUT=420 ./scripts/wait-for-app.sh istio-csr
