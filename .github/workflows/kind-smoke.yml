@@ -1,4 +1,5 @@
 # Ephemeral kind cluster smoke test — validates GitOps bootstrap without cloud cost.
+# Mesh workloads (KubeShip) use PSA enforce=privileged so Istio init can set NET_ADMIN/NET_RAW.
 name: Kind smoke
 
 on:
