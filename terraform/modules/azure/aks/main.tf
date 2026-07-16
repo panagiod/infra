@@ -85,6 +85,24 @@ variable "api_server_authorized_ip_ranges" {
   default = ["0.0.0.0/0"]
 }
 
+# Azure Policy add-on — CIS-oriented Kubernetes policy initiatives on AKS
+variable "azure_policy_enabled" {
+  type    = bool
+  default = true
+}
+
+# Free (dev) or Standard (SLA-backed control plane for production)
+variable "sku_tier" {
+  type    = string
+  default = "Free"
+}
+
+# Optional Log Analytics + Container Insights (adds Azure cost)
+variable "enable_log_analytics" {
+  type    = bool
+  default = false
+}
+
 variable "tags" {
   type    = map(string)
   default = {}
@@ -95,6 +113,20 @@ locals {
     Environment = var.environment
     ManagedBy   = "terraform"
   })
+
+  log_analytics_name = "${var.cluster_name}-logs"
+}
+
+resource "azurerm_log_analytics_workspace" "this" {
+  count = var.enable_log_analytics ? 1 : 0
+
+  name                = local.log_analytics_name
+  location            = var.location
+  resource_group_name = var.resource_group_name
+  sku                 = "PerGB2018"
+  retention_in_days   = 30
+
+  tags = local.tags
 }
 
 # Managed Kubernetes control plane — Azure operates the API server and etcd
@@ -104,6 +136,10 @@ resource "azurerm_kubernetes_cluster" "this" {
   resource_group_name = var.resource_group_name
   dns_prefix          = var.cluster_name
   kubernetes_version  = var.kubernetes_version
+
+  sku_tier = var.sku_tier
+
+  azure_policy_enabled = var.azure_policy_enabled
 
   # Default system node pool — AKS cluster autoscaler scales between min and max
   default_node_pool {
@@ -140,6 +176,13 @@ resource "azurerm_kubernetes_cluster" "this" {
   # Restrict who can reach the public API endpoint (same idea as EKS public CIDR allowlist)
   api_server_access_profile {
     authorized_ip_ranges = var.api_server_authorized_ip_ranges
+  }
+
+  dynamic "oms_agent" {
+    for_each = var.enable_log_analytics ? [1] : []
+    content {
+      log_analytics_workspace_id = azurerm_log_analytics_workspace.this[0].id
+    }
   }
 
   tags = local.tags

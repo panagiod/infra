@@ -1,0 +1,49 @@
+# CIS 5.2.x — require dropping ALL capabilities.
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: cis-require-drop-all-capabilities
+  annotations:
+    policies.kyverno.io/title: Require Drop ALL Capabilities
+    policies.kyverno.io/category: CIS
+    policies.kyverno.io/severity: medium
+spec:
+  validationFailureAction: Audit
+  background: true
+  rules:
+    - name: drop-all-capabilities
+      match:
+        any:
+          - resources:
+              kinds:
+                - Pod
+      exclude:
+        any:
+          - resources:
+              namespaces:
+                - kube-system
+                - cert-manager
+                - istio-system
+                - monitoring
+                - kyverno
+                - argocd
+                - couchbase
+      validate:
+        message: "Containers must drop ALL capabilities."
+        pattern:
+          spec:
+            =(ephemeralContainers):
+              - securityContext:
+                  capabilities:
+                    drop:
+                      - ALL
+            =(initContainers):
+              - securityContext:
+                  capabilities:
+                    drop:
+                      - ALL
+            containers:
+              - securityContext:
+                  capabilities:
+                    drop:
+                      - ALL

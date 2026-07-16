@@ -1,0 +1,20 @@
+# CIS 5.3.x starter — restrict ingress; egress left open (Couchbase SDK uses
+# multiple dynamic ports/pod IPs; Istio handles mesh egress policy).
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: kubeship-api
+  namespace: kubeship
+spec:
+  podSelector:
+    matchLabels:
+      app: kubeship-api
+  policyTypes:
+    - Ingress
+  ingress:
+    # Mesh ingress gateway and in-namespace traffic
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: istio-system
+        - podSelector: {}

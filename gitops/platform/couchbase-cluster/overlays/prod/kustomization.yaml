@@ -1,0 +1,37 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+  - ../../base
+
+patches:
+  - target:
+      kind: StatefulSet
+      name: couchbase
+    patch: |
+      apiVersion: apps/v1
+      kind: StatefulSet
+      metadata:
+        name: couchbase
+      spec:
+        template:
+          spec:
+            containers:
+              - name: couchbase-server
+                env:
+                  - name: CLUSTER_RAM_MB
+                    value: "768"
+                  - name: INDEX_RAM_MB
+                    value: "256"
+                  - name: BUCKET_RAM_MB
+                    value: "256"
+        volumeClaimTemplates:
+          - metadata:
+              name: data
+            spec:
+              accessModes:
+                - ReadWriteOnce
+              storageClassName: standard
+              resources:
+                requests:
+                  storage: 10Gi

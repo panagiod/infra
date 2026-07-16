@@ -31,8 +31,10 @@ Planning and backlog: [github-project.md](github-project.md) (Issues + Project b
 | Item | Notes |
 |------|-------|
 | Bootstrap PKI | Self-signed platform CA — **documented lab-only**; see [cert-manager-provider.md](../operations/cert-manager-provider.md) |
+| CIS / pod security | Kyverno starter + PSA + KubeShip NetworkPolicy — [security-baseline.md](../operations/security-baseline.md) |
 | Grafana password | `changeme` on staging; prod expects a secret you create |
 | Alertmanager | **Null receiver (lab default)** — rules fire, no delivery; see [alerting.md](../operations/alerting.md) |
+| Couchbase edition | **Community Edition** image pinned in GitOps — see [licenses.md](licenses.md) |
 | Helm chart versions | Unpinned — always latest from upstream repos |
 | Live cloud soak | Not required to use the repo; recommended before prod |
 | GCP | Not started |

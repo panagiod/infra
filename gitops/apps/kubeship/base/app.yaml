@@ -5,6 +5,10 @@ metadata:
   name: kubeship
   labels:
     istio-injection: enabled
+    # Istio sidecar init needs NET_ADMIN/NET_RAW — baseline enforce blocks injection.
+    pod-security.kubernetes.io/enforce: privileged
+    pod-security.kubernetes.io/audit: restricted
+    pod-security.kubernetes.io/warn: restricted
 ---
 apiVersion: v1
 kind: Secret
@@ -32,7 +36,13 @@ spec:
     metadata:
       labels:
         app: kubeship-api
+      annotations:
+        # Couchbase SDK uses plain TCP; bypass sidecar capture for data service ports.
+        traffic.sidecar.istio.io/excludeOutboundPorts: "8091,8092,8093,8094,8095,8096,11210"
     spec:
+      securityContext:
+        seccompProfile:
+          type: RuntimeDefault
       containers:
         - name: kubeship-api
           image: kubeship:ci
@@ -42,7 +52,7 @@ spec:
               containerPort: 8080
           env:
             - name: COUCHBASE_CONNECTION_STRING
-              value: couchbase://couchbase.couchbase.svc
+              value: couchbase://couchbase-srv.couchbase.svc.cluster.local?network=default
             - name: COUCHBASE_BUCKET
               value: kubeship
             - name: COUCHBASE_USERNAME
@@ -55,19 +65,27 @@ spec:
                 secretKeyRef:
                   name: kubeship-couchbase
                   key: password
+          startupProbe:
+            httpGet:
+              path: /health
+              port: http
+            periodSeconds: 5
+            failureThreshold: 30
           readinessProbe:
             httpGet:
               path: /health
               port: http
-            initialDelaySeconds: 10
-            periodSeconds: 10
-            failureThreshold: 30
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            timeoutSeconds: 3
+            failureThreshold: 6
           livenessProbe:
             httpGet:
               path: /health
               port: http
             initialDelaySeconds: 30
             periodSeconds: 15
+            timeoutSeconds: 3
           resources:
             requests:
               cpu: 100m

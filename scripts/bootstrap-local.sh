@@ -12,6 +12,8 @@ DESTROY="${DESTROY:-false}"
 WAIT_TIMEOUT="${WAIT_TIMEOUT:-900}"                   # seconds to wait for core apps
 STRICT_WAIT="${STRICT_WAIT:-false}"                   # exit 1 on wait timeout (CI)
 FAIL_FAST="${FAIL_FAST:-true}"                        # exit early on terminal pod/sync errors (CI)
+FAIL_FAST_STUCK_AFTER="${FAIL_FAST_STUCK_AFTER:-150}" # pod age before startup-stuck fail-fast (CI)
+WAIT_POLL_INTERVAL="${WAIT_POLL_INTERVAL:-5}"         # poll interval while waiting for apps
 BOOTSTRAP_PHASE="${BOOTSTRAP_PHASE:-all}"             # all | argocd | cluster-root | materialize | wait
 WAIT_APP="${WAIT_APP:-}"                              # single app when BOOTSTRAP_PHASE=materialize|wait
 CLUSTER_ROOT_AUTOMATED_SYNC="${CLUSTER_ROOT_AUTOMATED_SYNC:-true}"  # real clusters: cluster-root syncs children from Git
@@ -182,9 +184,32 @@ app_workload_ready() {
       available="$(kubectl -n kubeship get deploy kubeship-api -o jsonpath='{.status.availableReplicas}' 2>/dev/null || echo 0)"
       [[ "${available:-0}" -ge 1 ]]
       ;;
+    couchbase)
+      couchbase_sdk_ready
+      ;;
     *)
       return 1
       ;;
+  esac
+}
+
+couchbase_sdk_ready() {
+  local ready replicas
+  ready="$(kubectl -n couchbase get statefulset couchbase -o jsonpath='{.status.readyReplicas}' 2>/dev/null || echo 0)"
+  replicas="$(kubectl -n couchbase get statefulset couchbase -o jsonpath='{.spec.replicas}' 2>/dev/null || echo 1)"
+  [[ "${ready:-0}" -ge 1 && "${ready}" -eq "${replicas}" ]] || return 1
+
+  kubectl -n couchbase exec couchbase-0 -- /opt/couchbase/bin/couchbase-cli bucket-list \
+    -c 127.0.0.1 -u "$(kubectl -n couchbase get secret couchbase-admin-secret -o jsonpath='{.data.username}' | base64 -d)" \
+    -p "$(kubectl -n couchbase get secret couchbase-admin-secret -o jsonpath='{.data.password}' | base64 -d)" 2>/dev/null \
+    | grep -q 'kubeship'
+}
+
+app_require_extra_ready() {
+  local app="$1"
+  case "${app}" in
+    couchbase) couchbase_sdk_ready ;;
+    *) return 0 ;;
   esac
 }
 
@@ -208,10 +233,12 @@ app_is_ready() {
     return 1
   fi
   if [[ "${sync}" == "Synced" ]]; then
+    app_require_extra_ready "${app}" || return 1
     return 0
   fi
   # Istio and other Helm charts may stay OutOfSync while Healthy (benign live diff).
   if [[ "${sync}" == "OutOfSync" && "${phase}" == "Succeeded" ]]; then
+    app_require_extra_ready "${app}" || return 1
     return 0
   fi
   return 1
@@ -233,7 +260,7 @@ app_terminal_pod_failures() {
 import json, sys
 terminal = {
     'ImagePullBackOff', 'ErrImagePull', 'CrashLoopBackOff',
-    'CreateContainerConfigError', 'InvalidImageName',
+    'CreateContainerConfigError', 'CreateContainerError', 'InvalidImageName',
 }
 data = json.load(sys.stdin)
 lines = []
@@ -251,9 +278,80 @@ for pod in data.get('items', []):
                 if label == 'init':
                     prefix += ' (init)'
                 lines.append(f'{prefix}: {reason} — {msg}')
+            terminated = (cs.get('state') or {}).get('terminated') or {}
+            if terminated.get('reason') in {'Error', 'OOMKilled'}:
+                cname = cs.get('name', '?')
+                lines.append(f'{name}/{cname}: terminated {terminated.get(\"reason\")}')
 if lines:
     print('\n'.join(lines))
 " 2>/dev/null || true
+}
+
+app_kubeship_failures() {
+  local ns="kubeship"
+  kubectl get namespace "${ns}" >/dev/null 2>&1 || return 0
+
+  local pod
+  for pod in $(kubectl -n "${ns}" get pods -l app=kubeship-api -o jsonpath='{.items[*].metadata.name}' 2>/dev/null); do
+    if kubectl -n "${ns}" logs "${pod}" -c kubeship-api --tail=80 2>/dev/null | grep -q 'store connect failed'; then
+      printf 'kubeship-api/%s: store connect failed (see pod logs)\n' "${pod}"
+      return 0
+    fi
+  done
+
+  kubectl -n "${ns}" get pods -l app=kubeship-api -o json 2>/dev/null | python3 -c "
+import json, sys
+from datetime import datetime, timezone
+
+stuck_after = int(sys.argv[1])
+data = json.load(sys.stdin)
+now = datetime.now(timezone.utc)
+lines = []
+for pod in data.get('items', []):
+    created = pod['metadata'].get('creationTimestamp')
+    age_s = 0
+    if created:
+        age_s = int((now - datetime.fromisoformat(created.replace('Z', '+00:00'))).total_seconds())
+    for cs in pod.get('status', {}).get('containerStatuses') or []:
+        if cs.get('name') != 'kubeship-api':
+            continue
+        restarts = cs.get('restartCount', 0)
+        if restarts >= 3 and not cs.get('ready'):
+            lines.append(f\"{pod['metadata']['name']}/kubeship-api: {restarts} restarts and still not ready\")
+        if (
+            pod.get('status', {}).get('phase') == 'Running'
+            and not cs.get('started')
+            and age_s >= stuck_after
+        ):
+            lines.append(f\"{pod['metadata']['name']}/kubeship-api: startup probe stuck ({age_s}s)\")
+if lines:
+    print('\n'.join(lines))
+" "${FAIL_FAST_STUCK_AFTER}" 2>/dev/null || true
+}
+
+app_couchbase_failures() {
+  local pod msg
+  pod="$(kubectl -n couchbase get pods -l app=couchbase -o jsonpath='{.items[0].metadata.name}' 2>/dev/null || true)"
+  [[ -n "${pod}" ]] || return 1
+
+  if kubectl -n couchbase logs "${pod}" --tail=100 2>/dev/null | grep -qE 'FAILED:|Error encountered'; then
+    msg="$(kubectl -n couchbase logs "${pod}" --tail=20 2>/dev/null | tail -5)"
+    printf 'couchbase/%s: init failed — %s\n' "${pod}" "${msg:-see pod logs}"
+    return 0
+  fi
+  return 1
+}
+
+app_workload_fail_fast() {
+  local app="$1"
+  case "${app}" in
+    couchbase)
+      app_couchbase_failures
+      ;;
+    kubeship)
+      app_kubeship_failures
+      ;;
+  esac
 }
 
 app_permanent_sync_error() {
@@ -277,11 +375,22 @@ fail_fast_if_broken() {
   local app="$1"
   [[ "${FAIL_FAST}" == "true" ]] || return 0
 
-  local pod_issues sync_err
+  local pod_issues workload_issues sync_err
   pod_issues="$(app_terminal_pod_failures "${app}")"
   if [[ -n "${pod_issues}" ]]; then
     warn "Terminal pod failure for ${app} — failing fast (FAIL_FAST=true)"
     printf '%s\n' "${pod_issues}" >&2
+    if [[ "${CI_POD_DIAGNOSTICS:-false}" == "true" ]]; then
+      "${REPO_ROOT}/scripts/ci-pod-diagnostics.sh" "${app}" || true
+    fi
+    [[ "${STRICT_WAIT}" == "true" ]] && exit 1
+    return 0
+  fi
+
+  workload_issues="$(app_workload_fail_fast "${app}" || true)"
+  if [[ -n "${workload_issues}" ]]; then
+    warn "Workload failure for ${app} — failing fast (FAIL_FAST=true)"
+    printf '%s\n' "${workload_issues}" >&2
     if [[ "${CI_POD_DIAGNOSTICS:-false}" == "true" ]]; then
       "${REPO_ROOT}/scripts/ci-pod-diagnostics.sh" "${app}" || true
     fi
@@ -321,7 +430,7 @@ wait_for_single_app() {
     else
       app_status_line "${app}"
     fi
-    sleep "${WAIT_POLL_INTERVAL:-5}"
+    sleep "${WAIT_POLL_INTERVAL}"
   done
 
   warn "Timed out waiting for ${app}"

@@ -1,0 +1,80 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: couchbase
+  namespace: couchbase
+  labels:
+    app: couchbase
+spec:
+  serviceName: couchbase-srv
+  replicas: 1
+  selector:
+    matchLabels:
+      app: couchbase
+  template:
+    metadata:
+      labels:
+        app: couchbase
+    spec:
+      containers:
+        - name: couchbase-server
+          image: couchbase/server:community-7.6.0
+          imagePullPolicy: IfNotPresent
+          command: ["/bin/bash", "/scripts/init.sh"]
+          env:
+            - name: COUCHBASE_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: couchbase-admin-secret
+                  key: username
+            - name: COUCHBASE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: couchbase-admin-secret
+                  key: password
+            - name: CLUSTER_RAM_MB
+              value: "512"
+            - name: INDEX_RAM_MB
+              value: "256"
+            - name: BUCKET_RAM_MB
+              value: "100"
+          ports:
+            - name: admin
+              containerPort: 8091
+            - name: memcached
+              containerPort: 11210
+          readinessProbe:
+            httpGet:
+              path: /ui/index.html
+              port: admin
+            initialDelaySeconds: 10
+            periodSeconds: 5
+            timeoutSeconds: 3
+          livenessProbe:
+            httpGet:
+              path: /ui/index.html
+              port: admin
+            initialDelaySeconds: 60
+            periodSeconds: 15
+            timeoutSeconds: 5
+          volumeMounts:
+            - name: data
+              mountPath: /opt/couchbase/var/lib/couchbase
+            - name: init-scripts
+              mountPath: /scripts
+              readOnly: true
+      volumes:
+        - name: init-scripts
+          configMap:
+            name: couchbase-init
+            defaultMode: 0755
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+      spec:
+        accessModes:
+          - ReadWriteOnce
+        storageClassName: standard
+        resources:
+          requests:
+            storage: 2Gi

@@ -435,7 +435,7 @@ spec:
       selfHeal: true
 ---
 # -----------------------------------------------------------------------------
-# couchbase-config — Namespace and admin secret (before operator/cluster)
+# couchbase-config — Namespace and admin secret (before CE cluster)
 # -----------------------------------------------------------------------------
 apiVersion: argoproj.io/v1alpha1
 kind: Application
@@ -463,59 +463,23 @@ spec:
       - CreateNamespace=true
 ---
 # -----------------------------------------------------------------------------
-# couchbase — Couchbase Autonomous Operator + single-node cluster (staging)
+# couchbase — Couchbase CE single-node cluster (StatefulSet; operator is EE-only)
 # -----------------------------------------------------------------------------
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
   name: couchbase
   namespace: argocd
+  labels:
+    infra.platform/git-source: "true"
   finalizers:
     - resources-finalizer.argocd.argoproj.io
 spec:
   project: default
   source:
-    repoURL: https://couchbase-partners.github.io/helm-charts
-    chart: couchbase-operator
-    targetRevision: '*'
-    helm:
-      releaseName: couchbase
-      values: |
-        install:
-          couchbaseOperator: true
-          admissionController: true
-          couchbaseCluster: true
-          syncGateway: false
-        cluster:
-          antiAffinity: false
-          name: couchbase
-          security:
-            adminSecret: couchbase-admin-secret
-          cluster:
-            dataServiceMemoryQuota: 256Mi
-            indexServiceMemoryQuota: 256Mi
-            queryServiceMemoryQuota: 256Mi
-          servers:
-            default:
-              size: 1
-              services:
-                - data
-                - index
-                - query
-          volumeClaimTemplates:
-            - metadata:
-                name: data
-              spec:
-                storageClassName: standard
-                accessModes:
-                  - ReadWriteOnce
-                resources:
-                  requests:
-                    storage: 2Gi
-        buckets:
-          default: null
-          kubeship:
-            memoryQuota: 100Mi
+    repoURL: https://github.com/panagiod/infra
+    targetRevision: main
+    path: gitops/platform/couchbase-cluster/overlays/staging
   destination:
     server: https://kubernetes.default.svc
     namespace: couchbase
@@ -525,7 +489,6 @@ spec:
       selfHeal: true
     syncOptions:
       - CreateNamespace=true
-      - ServerSideApply=true
 ---
 # -----------------------------------------------------------------------------
 # kubeship — Shipping management API (Couchbase-backed)

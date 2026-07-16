@@ -9,6 +9,7 @@ source "${REPO_ROOT}/scripts/ci-install-tools.sh"
 
 ENVIRONMENT="${ENVIRONMENT:-staging}"
 RENDER_DIR="${RENDER_DIR:-}"
+LIST_OUT="${LIST_OUT:-}"
 
 log() { printf '==> %s\n' "$*"; }
 die() { printf 'ERROR: %s\n' "$*" >&2; exit 1; }
@@ -141,6 +142,11 @@ main() {
   sed 's/^/  /' "${final_list}"
 
   verify_images "${final_list}"
+
+  if [[ -n "${LIST_OUT}" ]]; then
+    cp "${final_list}" "${LIST_OUT}"
+    log "Wrote image list to ${LIST_OUT}"
+  fi
 
   [[ "${cleanup}" -eq 0 ]] || rm -rf "${workdir}"
 }

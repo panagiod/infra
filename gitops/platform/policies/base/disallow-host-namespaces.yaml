@@ -1,0 +1,37 @@
+# CIS 5.2.x — disallow host PID/IPC/network namespace sharing.
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: cis-disallow-host-namespaces
+  annotations:
+    policies.kyverno.io/title: Disallow Host Namespaces
+    policies.kyverno.io/category: CIS
+    policies.kyverno.io/severity: high
+spec:
+  validationFailureAction: Enforce
+  background: true
+  rules:
+    - name: host-namespaces
+      match:
+        any:
+          - resources:
+              kinds:
+                - Pod
+      exclude:
+        any:
+          - resources:
+              namespaces:
+                - kube-system
+                - cert-manager
+                - istio-system
+                - monitoring
+                - kyverno
+                - argocd
+                - couchbase
+      validate:
+        message: "Host namespaces (hostPID, hostIPC, hostNetwork) are not allowed."
+        pattern:
+          spec:
+            =(hostPID): "false"
+            =(hostIPC): "false"
+            =(hostNetwork): "false"

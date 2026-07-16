@@ -56,12 +56,29 @@ kubectl -n kubeship port-forward svc/kubeship-api 8080:8080
 
 ## Sanity tests
 
-API and UI smoke tests run in CI without Couchbase (in-memory store):
+### Unit tests (no Couchbase)
+
+API and UI tests run in CI with an in-memory store:
 
 ```bash
 cd apps/kubeship
 go test ./...
 ```
+
+Covers `/health`, carriers, and full shipment lifecycle (`TestShipmentLifecycle`).
+
+### In-cluster API sanity
+
+After bootstrap (kind or cloud), `verify-kubeship.sh` exercises the **live** API through Couchbase:
+
+```bash
+chmod +x scripts/verify-kubeship.sh
+./scripts/verify-kubeship.sh
+```
+
+Kind smoke runs this automatically via `LOCAL=true ./scripts/verify-platform.sh`.
+
+Checks: `GET /health`, `GET /api/v1/carriers`, create → get → track → patch shipment.
 
 ## Install order
 

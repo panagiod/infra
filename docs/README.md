@@ -40,6 +40,7 @@ After bootstrap: [operations/verify.md](operations/verify.md).
 | [operations/upgrades.md](operations/upgrades.md) | Kubernetes and platform upgrades |
 | [operations/alerting.md](operations/alerting.md) | Prometheus rules and Alertmanager |
 | [operations/cert-manager-provider.md](operations/cert-manager-provider.md) | Production PKI and issuers |
+| [operations/security-baseline.md](operations/security-baseline.md) | CIS-aligned controls (Kyverno, network, EKS/AKS) |
 | [operations/quota-automation.md](operations/quota-automation.md) | Codespaces shutdown and CI quota guards |
 
 ---
@@ -62,6 +63,7 @@ After bootstrap: [operations/verify.md](operations/verify.md).
 | [reference/project-status.md](reference/project-status.md) | Phase-1 completeness and maturity |
 | [reference/github-project.md](reference/github-project.md) | GitHub Issues backlog, Project board, sync workflows |
 | [reference/scripts.md](reference/scripts.md) | Bootstrap and validation scripts |
+| [reference/licenses.md](reference/licenses.md) | OSS-only stack policy and Couchbase CE pin |
 | [reference/gitops-configuration.md](reference/gitops-configuration.md) | Cluster env files and Argo CD roots |
 
 ---

@@ -72,6 +72,10 @@ module "aks" {
   gitops_target_revision = var.gitops_target_revision
 
   api_server_authorized_ip_ranges = var.api_server_authorized_ip_ranges
+
+  sku_tier             = var.aks_sku_tier
+  azure_policy_enabled = var.azure_policy_enabled
+  enable_log_analytics = var.enable_log_analytics
 }
 
 output "cluster_name" {

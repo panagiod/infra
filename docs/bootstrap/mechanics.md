@@ -34,6 +34,8 @@ Materialization reads the same `gitops/clusters/<env>/applications.yaml` as prod
 
 **Fast preflight (GitOps workflow / `ci-preflight-gitops.sh`):** namespace wave order, image registry checks, kubeconform on rendered manifests — before Kind smoke creates a cluster.
 
+**Image preload (Kind smoke):** after kind cluster create, `ci-preload-kind-images.sh` docker-pulls (with retries) and `kind load`s every platform image so pods do not race partial registry downloads during wave waits.
+
 **In-cluster fail-fast:** `FAIL_FAST=true` (Kind smoke default) exits wait loops on `ImagePullBackOff`, `CrashLoopBackOff`, or permanent Argo sync errors (`not found`) instead of waiting the full wave timeout.
 
 ```text

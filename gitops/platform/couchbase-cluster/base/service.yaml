@@ -1,0 +1,38 @@
+# Headless service for Couchbase SDK SRV discovery (matches operator naming).
+apiVersion: v1
+kind: Service
+metadata:
+  name: couchbase-srv
+  namespace: couchbase
+  labels:
+    app: couchbase
+spec:
+  clusterIP: None
+  publishNotReadyAddresses: true
+  selector:
+    app: couchbase
+  ports:
+    - name: admin
+      port: 8091
+      targetPort: 8091
+    - name: memcached
+      port: 11210
+      targetPort: 11210
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: couchbase
+  namespace: couchbase
+  labels:
+    app: couchbase
+spec:
+  selector:
+    app: couchbase
+  ports:
+    - name: admin
+      port: 8091
+      targetPort: 8091
+    - name: memcached
+      port: 11210
+      targetPort: 11210

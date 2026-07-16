@@ -2,6 +2,7 @@
 # Post-bootstrap verification — run after bootstrap-aws.sh or manual Terraform apply.
 set -euo pipefail
 
+REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 ENVIRONMENT="${ENVIRONMENT:-staging}"
 AWS_REGION="${AWS_REGION:-us-east-1}"
 NAMESPACE_ARGOCD="argocd"
@@ -151,6 +152,30 @@ check_kubeship() {
   fi
 }
 
+check_kubeship_api() {
+  if [[ "${LOCAL:-false}" != "true" && "${VERIFY_KUBESHIP:-false}" != "true" ]]; then
+    return 0
+  fi
+  log "KubeShip API sanity (HTTP + Couchbase-backed lifecycle)"
+  if "${REPO_ROOT}/scripts/verify-kubeship.sh"; then
+    pass "KubeShip API sanity checks passed"
+  else
+    fail "KubeShip API sanity checks failed"
+  fi
+}
+
+check_kube_bench() {
+  if [[ "${RUN_KUBE_BENCH:-false}" != "true" ]]; then
+    return 0
+  fi
+  log "Running kube-bench (optional CIS scan)"
+  if "${REPO_ROOT:-.}/scripts/run-kube-bench.sh"; then
+    pass "kube-bench job completed — review logs for [FAIL]"
+  else
+    warn "kube-bench job failed or timed out (non-blocking)"
+  fi
+}
+
 check_ingress_tls() {
   log "Checking ingress TLS"
   if kubectl -n istio-system get certificate istio-ingressgateway-certs >/dev/null 2>&1; then
@@ -197,6 +222,8 @@ main() {
   check_ingress_tls
   check_mtls_policy
   check_kubeship
+  check_kubeship_api
+  check_kube_bench
   summary
 }
 

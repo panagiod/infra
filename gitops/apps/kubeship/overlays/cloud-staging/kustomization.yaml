@@ -4,6 +4,23 @@ kind: Kustomization
 resources:
   - ../staging
 
+# Kind smoke / lab: skip Istio sidecar so the Couchbase SDK uses plain TCP without
+# sidecar startup ordering. Production overlay keeps mesh injection.
+patches:
+  - target:
+      kind: Deployment
+      name: kubeship-api
+    patch: |
+      apiVersion: apps/v1
+      kind: Deployment
+      metadata:
+        name: kubeship-api
+      spec:
+        template:
+          metadata:
+            annotations:
+              sidecar.istio.io/inject: "false"
+
 images:
   - name: kubeship:ci
     newName: ghcr.io/panagiod/infra/kubeship
